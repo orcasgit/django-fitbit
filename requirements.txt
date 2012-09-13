@@ -1,0 +1,1 @@
+-e git+https://github.com/orcasgit/python-fitbit.git#egg=fitbit
