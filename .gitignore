@@ -1,4 +1,4 @@
 *.swp
 *.pyc
 secret_keys.py*
-local.py
+example_project/settings/local.py
