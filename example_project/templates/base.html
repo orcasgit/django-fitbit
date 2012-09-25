@@ -1,0 +1,14 @@
+{% load url from future %}
+<!doctype html>
+<html>
+<head>
+    <title>{% block title %}{% endblock %}</title>
+    {% block javascript %}{% endblock javascript %}
+    {% block extra-js %}{% endblock extra-js %}
+    {% block css %}{% endblock css %}
+    {% block extra-css %}{% endblock extra-css %}
+</head>
+<body>
+    {% block content %}{% endblock content %}
+</body>
+</html>
