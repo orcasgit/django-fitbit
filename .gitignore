@@ -1,3 +1,4 @@
 *.swp
 *.pyc
 secret_keys.py*
+local.py
