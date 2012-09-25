@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% load url from future %}
+
+{% block title %}Fitbit Authentication Error{% endblock title %}
+
+{% block content %}
+<h1>Fitbit Authentication Error</h1>
+
+<p>We encountered an error while attempting to authenticate you through Fitbit.</p>
+
+<p><a href="{% url 'oauth-login' %}">Retry Fitbit Authentication</a></p>
+{% endblock content %}
