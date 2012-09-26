@@ -1,5 +1,9 @@
+import os
+
 from .secret_keys import *
 
+
+PROJECT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(__file__)))
 
 DEBUG = True
 TEMPLATE_DEBUG = True
@@ -55,7 +59,7 @@ ROOT_URLCONF = 'example_project.urls'
 WSGI_APPLICATION = 'example_project.wsgi.application'
 
 TEMPLATE_DIRS = (
-    '../templates',
+    os.path.join(PROJECT_DIR, 'templates'),
 )
 
 INSTALLED_APPS = (
