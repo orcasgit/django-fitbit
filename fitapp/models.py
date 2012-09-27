@@ -3,7 +3,7 @@ from django.db import models
 
 
 class UserFitbit(models.Model):
-    user = models.ForeignKey(User, unique=True)
+    user = models.OneToOneField(User)
     fitbit_user = models.CharField(max_length=32)
     auth_token = models.TextField()
     auth_secret = models.TextField()
