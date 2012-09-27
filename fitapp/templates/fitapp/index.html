@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load url from future %}
+{% load fitbit %}
+
+{% block content %}
+    <nav id="nav-main" class="standout">
+        <h1><a href="{% url 'fitbit' %}">Integrate with Fitbit</a></h1>
+    </nav>
+    <div id="page">
+        <ul id="settings" class="common-menu menu-arrows">
+            <li class="icon-avatar{% if active == 'account' %} current{% endif %}">
+                <a href="{% url 'accounts.account' %}">Account<span class="arrow"></span></a>
+            </li>
+            <li class="icon-notifications{% if active == 'notifications' %} current{% endif %}">
+                <a href="{% url 'accounts.account_email' %}">Notifications<span class="arrow"></span></a>
+            </li>
+            <li class="icon-info{% if active == 'help' %} current{% endif %}">
+                <a href="{% url 'accounts.account_sms' %}">Help<span class="arrow"></span></a>
+            </li>
+            <li class="icon-telephone{% if active == 'telephone' %} current{% endif %}">
+                <a href="#">Contact Us<span class="arrow"></span></a>
+            </li>
+            <li class="icon-fitbit{% if active == 'fitbit' %} current{% endif %}">
+                <a href="{% url 'fitbit' %}">Integrate Fitbit<span class="arrow"></span></a>
+            </li>
+        </ul>
+
+        {% if request.user|is_integrated_with_fitbit %}
+            <p><a href="{% url 'fitbit-logout' %}">Remove Fitbit integration from this account</a></p>
+        {% else %}
+            <p><a href="{% url 'fitbit-login' %}">Integrate your account with Fitbit</a></p>
+        {% endif %}
+    </div>
+{% endblock content %}

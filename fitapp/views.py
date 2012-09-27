@@ -5,17 +5,27 @@ from django.shortcuts import redirect, render
 
 from fitapp import models as fitapp
 from fitapp import utils
+from fitapp.decorators import fitbit_required
 
 
 @login_required
-def oauth(request):
-    return render(request, 'fitapp/oauth/index.html', {})
+def fitbit(request):
+    """View the status of user's Fitbit Oauth credentials."""
+    next_url = request.GET.get('next', None)
+    request.session['fitbit_next'] = next_url
+    return render(request, 'fitapp/index.html', {
+        'active': 'fitbit',
+    })
 
 
 @login_required
-def oauth_login(request):
+def login(request):
+    """
+    Begin the OAuth authentication process by obtaining a Request Token from
+    Fitbit and redirecting the user to the Fitbit site for authorization.
+    """
     fb = utils.create_fitbit()
-    callback_url = request.build_absolute_uri(reverse('oauth-complete'))
+    callback_url = request.build_absolute_uri(reverse('fitbit-complete'))
     parameters = {'oauth_callback': callback_url}
     token = fb.client.fetch_request_token(parameters)
     token_url = fb.client.authorize_token_url(token)
@@ -24,23 +34,32 @@ def oauth_login(request):
 
 
 @login_required
-def oauth_complete(request):
+def complete(request):
+    """Called back from Fitbit after the user grants us authorization."""
     fb = utils.create_fitbit()
     token = request.session['token']
     verifier = request.GET['oauth_verifier']
     try:
         access_token = fb.client.fetch_access_token(token, verifier)
     except:
-        return redirect(reverse('oauth-error'))
+        return redirect(reverse('fitbit-error'))
     fbuser, created = fitapp.UserFitbit.objects.get_or_create(user=request.user,
             auth_token=access_token.key, auth_secret=access_token.secret,
             fitbit_user=fb.client.user_id)
-    return redirect(reverse('one-day'))
+    try:
+        next_url = request.session.pop('fitbit_next')
+    except KeyError:
+        next_url = reverse('fitbit')
+    return redirect(next_url)
 
 
-def oauth_error(request):
-    return render(request, 'fitapp/oauth/error.html')
+@login_required
+def error(request):
+    return render(request, 'fitapp/error.html', {})
 
 
-def fitbit_data(request, days=1):
-    return render(request, 'fitapp/data.html', {})
+@login_required
+def logout(request):
+    """Remove this user's Fitbit credentials."""
+    fitapp.UserFitbit.objects.filter(user=request.user).delete()
+    return redirect(reverse('fitbit'))
