@@ -5,13 +5,17 @@ from fitbit import Fitbit
 from fitapp.models import UserFitbit
 
 
-def create_fitbit(**kwargs):
-    data = {
-        'consumer_key': settings.FITBIT_CONSUMER_KEY,
-        'consumer_secret': settings.FITBIT_CONSUMER_SECRET,
-    }
-    data.update(kwargs)
-    return Fitbit(**data)
+def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
+    """Shortcut to create a Fitbit instance.
+
+    If consumer_key or consumer_secret are not provided, then the values
+    specified in settings are used.
+    """
+    if consumer_key == None:
+        consumer_key = getattr(settings, 'FITBIT_CONSUMER_KEY', None)
+    if consumer_secret == None:
+        consumer_secret = getattr(settings, 'FITBIT_CONSUMER_SECRET', None)
+    return Fitbit(consumer_key, consumer_secret, **kwargs)
 
 
 def is_integrated(user):
@@ -19,7 +23,7 @@ def is_integrated(user):
 
     This does not currently require that the token and secret are valid.
     """
-    if not user.is_authenticated():
+    if not user.is_authenticated() or not user.is_active():
         return False
     try:
         fbuser = UserFitbit.objects.get(user=user)

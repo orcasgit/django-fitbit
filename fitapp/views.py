@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect, render
@@ -46,10 +45,8 @@ def complete(request):
     fbuser, created = UserFitbit.objects.get_or_create(user=request.user,
             auth_token=access_token.key, auth_secret=access_token.secret,
             fitbit_user=fb.client.user_id)
-    try:
-        next_url = request.session.pop('fitbit_next')
-    except KeyError:
-        next_url = reverse('fitbit')
+    next_url = request.session.pop('fitbit_next', reverse('fitbit'))
+    next_url = next_url or reverse('fitbit')
     return redirect(next_url)
 
 
