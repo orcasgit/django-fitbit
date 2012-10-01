@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect, render
 
-from fitapp import models as fitapp
+from fitapp.models import UserFitbit
 from fitapp import utils
 from fitapp.decorators import fitbit_required
 
@@ -43,7 +43,7 @@ def complete(request):
         access_token = fb.client.fetch_access_token(token, verifier)
     except:
         return redirect(reverse('fitbit-error'))
-    fbuser, created = fitapp.UserFitbit.objects.get_or_create(user=request.user,
+    fbuser, created = UserFitbit.objects.get_or_create(user=request.user,
             auth_token=access_token.key, auth_secret=access_token.secret,
             fitbit_user=fb.client.user_id)
     try:
@@ -61,5 +61,5 @@ def error(request):
 @login_required
 def logout(request):
     """Remove this user's Fitbit credentials."""
-    fitapp.UserFitbit.objects.filter(user=request.user).delete()
+    UserFitbit.objects.filter(user=request.user).delete()
     return redirect(reverse('fitbit'))
