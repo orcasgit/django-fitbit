@@ -10,3 +10,10 @@ class UserFitbit(models.Model):
 
     def __unicode__(self):
         return self.user.__unicode__()
+
+    def get_user_data(self):
+        return {
+            'user_key': self.auth_token,
+            'user_secret': self.auth_secret,
+            'user_id': self.fitbit_user,
+        }
