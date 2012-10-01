@@ -24,8 +24,6 @@ def is_integrated(user):
 
     This does not currently require that the token and secret are valid.
     """
-    if not user.is_authenticated() or not user.is_active:
-        return False
     try:
         fbuser = UserFitbit.objects.get(user=user)
     except UserFitbit.DoesNotExist:
