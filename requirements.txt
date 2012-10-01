@@ -1,1 +1,3 @@
--e git+https://github.com/orcasgit/python-fitbit.git#egg=fitbit
+#-e git+https://github.com/orcasgit/python-fitbit.git#egg=fitbit
+# Using this format so we can pull it into setup.py too:
+https://github.com/orcasgit/python-fitbit/tarball/master#egg=fitbit
