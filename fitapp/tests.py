@@ -5,8 +5,8 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from fitapp.models import UserFitbit
-from fitapp import utils
+from .models import UserFitbit
+from . import utils
 
 
 class FitappTestBase(TestCase):

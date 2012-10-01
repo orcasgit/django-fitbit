@@ -1,7 +1,7 @@
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 
-from fitapp import utils
+from . import utils
 
 
 def fitbit_required(view_func):

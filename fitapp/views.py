@@ -2,9 +2,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect, render
 
-from fitapp.models import UserFitbit
-from fitapp import utils
-from fitapp.decorators import fitbit_required
+from .models import UserFitbit
+from . import utils
+from .decorators import fitbit_required
 
 
 @login_required

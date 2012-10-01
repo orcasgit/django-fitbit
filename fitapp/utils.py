@@ -2,7 +2,7 @@ from django.conf import settings
 
 from fitbit import Fitbit
 
-from fitapp.models import UserFitbit
+from .models import UserFitbit
 
 
 def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
@@ -24,8 +24,4 @@ def is_integrated(user):
 
     This does not currently require that the token and secret are valid.
     """
-    try:
-        fbuser = UserFitbit.objects.get(user=user)
-    except UserFitbit.DoesNotExist:
-        return False
-    return True
+    return UserFitbit.objects.filter(user=user).exists()
