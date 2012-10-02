@@ -1,6 +1,6 @@
 from django import template
 
-from .. import utils
+from fitapp import utils
 
 
 register= template.Library()
