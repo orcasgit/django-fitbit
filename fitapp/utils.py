@@ -11,9 +11,9 @@ def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
     If consumer_key or consumer_secret are not provided, then the values
     specified in settings are used.
     """
-    if consumer_key == None:
+    if consumer_key is None:
         consumer_key = getattr(settings, 'FITBIT_CONSUMER_KEY', None)
-    if consumer_secret == None:
+    if consumer_secret is None:
         consumer_secret = getattr(settings, 'FITBIT_CONSUMER_SECRET', None)
     return Fitbit(consumer_key=consumer_key, consumer_secret=consumer_secret,
             **kwargs)
