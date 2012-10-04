@@ -25,3 +25,23 @@ def is_integrated(user):
     This does not currently require that the token and secret are valid.
     """
     return UserFitbit.objects.filter(user=user).exists()
+
+
+def get_fitbit_steps(fbuser, period):
+    """Creates a Fitbit API instance and retrieves step data for the period.
+
+    Several exceptions may be thrown:
+        ValueError       - Invalid period argument.
+        HTTPUnauthorized - 401 - fbuser has bad authentication credentials.
+        HTTPForbidden    - 403 - This isn't specified by Fitbit, but does
+                                 appear in the Python Fitbit library.
+        HTTPNotFound     - 404 - The specific resource doesn't exist.
+        HTTPConflict     - 409 - Usually a rate limit issue.
+        HTTPServerError  - >=500 - Fitbit server error or maintenance.
+        HTTPBadRequest   - >=400 - Bad request.
+    """
+    fb = create_fitbit(**fbuser.get_user_data())
+    data = None
+    data = fb.time_series('activities/steps', period=period)
+    steps = data['activities-steps'] if data else None
+    return steps
