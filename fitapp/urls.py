@@ -16,4 +16,9 @@ urlpatterns = patterns('',
             views.error, name='fitbit-error'),
     url('^logout/$',
             views.logout, name='fitbit-logout'),
+
+
+    # Fitbit data retrieval
+    url('^get_steps/(?P<period>\w+)/',
+            views.get_steps, name='fitbit-steps'),
 )

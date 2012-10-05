@@ -43,6 +43,5 @@ def get_fitbit_steps(fbuser, period):
     fb = create_fitbit(**fbuser.get_user_data())
     data = None
     data = fb.time_series('activities/steps', period=period)
-    key = 'activities-steps'
-    steps = data[key] if data and key in data else None
+    steps = data['activities-steps']
     return steps
