@@ -30,6 +30,11 @@ def is_integrated(user):
     return UserFitbit.objects.filter(user=user).exists()
 
 
+def get_valid_periods():
+    """Returns list of periods for which one may request time series data."""
+    return ['1d', '7d', '30d', '1w', '1m', '3m', '6m', '1y', 'max']
+
+
 def get_fitbit_steps(fbuser, period):
     """Creates a Fitbit API instance and retrieves step data for the period.
 

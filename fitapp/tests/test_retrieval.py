@@ -62,7 +62,7 @@ class TestRetrievalUtility(FitappTestBase):
 class TestRetrievalView(FitappTestBase):
     """Tests for the get_steps view."""
     url_name = 'fitbit-steps'
-    valid_periods = ['1d', '7d', '30d', '1w', '1m', '3m', '6m', '1y', 'max']
+    valid_periods = utils.get_valid_periods()
 
     def setUp(self):
         super(TestRetrievalView, self).setUp()
@@ -75,48 +75,57 @@ class TestRetrievalView(FitappTestBase):
         return super(TestRetrievalView, self)._get(url_kwargs=url_kwargs,
                 **kwargs)
 
+    def _check_response(self, response, code, objects=None, error_msg=None):
+        objects = objects or []
+        self.assertEquals(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEquals(data['meta']['status_code'], code, error_msg)
+        self.assertEquals(data['meta']['total_count'], len(objects),
+                error_msg)
+        self.assertEquals(data['objects'], objects, error_msg)
+
     def test_not_authenticated(self):
-        """View should return 404 when user isn't logged in."""
+        """Status code should be 101 when user isn't logged in."""
         self.client.logout()
         response = self._get()
-        self.assertEquals(response.status_code, 404)
+        self._check_response(response, 101)
 
     def test_not_active(self):
-        """View should return 404 when user isn't active."""
+        """Status code should be 101 when user isn't active."""
         self.user.is_active = False
         self.user.save()
         response = self._get()
-        self.assertEquals(response.status_code, 404)
+        self._check_response(response, 101)
 
     def test_not_integrated(self):
-        """View should return 401 when user is not integrated."""
+        """Status code should be 102 when user is not integrated."""
         self.fbuser.delete()
         response = self._get()
-        self.assertEquals(response.status_code, 401)
+        self._check_response(response, 102)
 
     def test_bad_fitbit_data(self):
-        """View should return 403 when user integration is invalid."""
+        """Status code should be 103 when user integration is invalid."""
         response = self._mock_utility(error=fitbit_exceptions.HTTPUnauthorized)
-        self.assertEquals(response.status_code, 403)
+        self._check_response(response, 103)
 
         response = self._mock_utility(error=fitbit_exceptions.HTTPForbidden)
-        self.assertEquals(response.status_code, 403)
+        self._check_response(response, 103)
 
     def test_bad_period(self):
-        """View should return 400 when invalid period is given."""
+        """Status code should be 104 when invalid period is given."""
         self.period = 'bad'
         response = self._get()
-        self.assertEquals(response.status_code, 400)
+        self._check_response(response, 104)
 
     def test_rate_limited(self):
-        """View should return 409 when Fitbit rate limit is hit."""
+        """Status code should be 105 when Fitbit rate limit is hit."""
         response = self._mock_utility(error=fitbit_exceptions.HTTPConflict)
-        self.assertEquals(response.status_code, 409)
+        self._check_response(response, 105)
 
     def test_fitbit_error(self):
-        """View should return 502 when Fitbit server error occurs."""
+        """Status code should be 106 when Fitbit server error occurs."""
         response = self._mock_utility(error=fitbit_exceptions.HTTPServerError)
-        self.assertEquals(response.status_code, 502)
+        self._check_response(response, 106)
 
     def test_retrieval(self):
         """View should return JSON steps data."""
@@ -126,5 +135,4 @@ class TestRetrievalView(FitappTestBase):
             response = self._mock_utility(response=steps)
             error_msg = 'Should be able to retrieve data for {0}.'.format(
                     self.period)
-            self.assertEquals(response.status_code, 200, error_msg)
-            self.assertEquals(response.content, json.dumps(steps), error_msg)
+            self._check_response(response, 100, steps, error_msg)

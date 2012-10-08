@@ -73,62 +73,63 @@ def logout(request):
 
 
 def get_steps(request, period):
-    """
-    Retrieves this user's steps data from Fitbit for the requested period.
+    """Retrieves this user's steps data from Fitbit for the requested period.
 
-    The data is a JSON-encoded, ordered list (from oldest to newest) of daily
-    steps data for the requested period. Each day is of the format:
-            {"dateTime": "yyyy-mm-dd", "value": 123}
-    where "value" is the number of steps that the user took on "dateTime".
+    The response body contains a JSON-encoded map with two things:
+        'objects': an ordered list (from oldest to newest) of daily steps data
+                   for the requested period. Each day is of the format:
+                        {'dateTime': 'yyyy-mm-dd', 'value': 123}
+                   where the user took 'value' steps on 'dateTime'.
+           'meta': a map containing two things: the 'total_count' of objects,
+                   and the 'status_code' of the response.
 
-    When everything goes well, we return a 200 response with the requested
-    data. However, there are a number of things that can 'go wrong' with this
-    call. For each exception, we return a different response code with a
-    short descriptive error message.
+    When everything goes well, the status_code is 200 and the requested data
+    is included. However, there are a number of things that can 'go wrong'
+    with this call. For each exception, we return no data with a status_code
+    to describe what went wrong on our end:
 
-    200 OK              no message -- Response contains JSON steps data.
-    400 Bad Request     Requested period should be one of [1d, 7d, 30d, 1w,
+    100 OK              no message -- Response contains JSON steps data.
+    101 Not Logged In   User is not logged in.
+    102 Not Integrated  User is not integrated with Fitbit.
+    103 Bad Credentials Fitbit authentication credentials are invalid.
+    104 Bad Request     Requested period should be one of [1d, 7d, 30d, 1w,
                         1m, 3m, 6m, 1y, max].
-    401 Unauthorized    User is not integrated with Fitbit.
-    403 Forbidden       Fitbit authentication credentials are invalid.
-    404 Not Found       User is not logged in.
-    409 Rate Limited    User exceeded the Fitbit limit of 150 calls/hour.
-    500 Internal Error  no message -- Error has been logged.
-    502 Fitbit Error    Please try again soon.
+    105 Rate Limited    User exceeded the Fitbit limit of 150 calls/hour.
+    106 Fitbit Error    Please try again soon.
     """
+    def make_response(code=None, steps=None):
+        steps = steps or []
+        data = {
+            'meta': {'total_count': len(steps), 'status_code': code},
+            'objects': steps,
+        }
+        return HttpResponse(json.dumps(data))
+
     # Check that user is logged in and integrated with Fitbit.
     user = request.user
     if not user.is_authenticated() or not user.is_active:
-        msg = 'Unauthorized - User is not logged in.'
-        return HttpResponse(msg, status=404)
+        return make_response(101)
     if not utils.is_integrated(user):
-        msg = 'Forbidden - User is not integrated with Fitbit.'
-        return HttpResponse(msg, status=401)
+        return make_response(102)
 
     # Check that request is for the correct time periods.
-    if not period in ['1d', '7d', '30d', '1w', '1m', '3m', '6m', '1y', 'max']:
-        msg = 'Bad Request - Requested period should be one of [1d, 7d, ' \
-                '30d, 1w, 1m, 3m, 6m, 1y, max].'
-        return HttpResponse(msg, status=400)
+    if not period in utils.get_valid_periods():
+        return make_response(104)
 
     # Request steps data through the API and handle related errors.
     fbuser = UserFitbit.objects.get(user=user)
     try:
         steps = utils.get_fitbit_steps(fbuser, period)
     except (HTTPUnauthorized, HTTPForbidden):
-        msg = 'Forbidden - Fitbit authentication credentials are invalid.'
-        return HttpResponse(msg, status=403)
+        return make_response(103)
     except HTTPConflict:
-        msg = 'Rate Limited - User has exceeded Fitbit limit of 150 calls/hour'
-        return HttpResponse(msg, status=409)
+        return make_response(105)
     except HTTPServerError:
-        msg = 'Fitbit Error - Please try again soon.'
-        return HttpResponse(msg, status=502)
+        return make_response(106)
     except:
         # Other documented exceptions are ValueError, HTTPNotFound, and
         # HTTPBadRequest. But they shouldn't occur, so we'll send a 500 and
         # check it out.
         raise
 
-    data = json.dumps(steps)
-    return HttpResponse(data)
+    return make_response(100, steps)
