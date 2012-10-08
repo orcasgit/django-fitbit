@@ -55,7 +55,7 @@ class TestRetrievalUtility(FitappTestBase):
     def test_retrieval(self):
         """get_fitbit_steps should return a list of daily steps data."""
         response = {'activities-steps': [1,2,3]}
-        steps = self.mock_time_series(response=response)
+        steps = self._mock_time_series(response=response)
         self.assertEquals(steps, response['activities-steps'])
 
 

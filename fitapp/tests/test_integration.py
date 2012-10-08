@@ -67,14 +67,14 @@ class TestLoginView(FitappTestBase):
         response = self._mock_client()
         self.assertRedirectsNoFollow(response, 'test')
         self.assertTrue('token' in self.client.session)
-        self.assertEquals(UserFitbit.objects.count(), 0)
+        self.assertEquals(UserFitbit.objects.count(), 1)
 
     def test_unauthenticated(self):
         """User must be logged in to access Login view."""
         self.client.logout()
         response = self._get()
         self.assertEquals(response.status_code, 302)
-        self.assertEquals(UserFitbit.objects.count(), 0)
+        self.assertEquals(UserFitbit.objects.count(), 1)
 
     def test_unintegrated(self):
         """Fitbit credentials not required to access Login view."""

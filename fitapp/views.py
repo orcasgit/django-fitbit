@@ -50,9 +50,11 @@ def complete(request):
         access_token = fb.client.fetch_access_token(token, verifier)
     except:
         return redirect(reverse('fitbit-error'))
-    fbuser, _ = UserFitbit.objects.get_or_create(user=request.user,
-            auth_token=access_token.key, auth_secret=access_token.secret,
-            fitbit_user=fb.client.user_id)
+    fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
+    fbuser.auth_token = access_token.key
+    fbuser.auth_secret = access_token.secret
+    fbuser.fitbit_user = fb.client.user_id
+    fbuser.save()
     next_url = request.session.pop('fitbit_next', None) or reverse('fitbit')
     return redirect(next_url)
 
