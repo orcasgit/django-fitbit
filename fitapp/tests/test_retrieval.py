@@ -5,6 +5,7 @@ from fitbit import exceptions as fitbit_exceptions
 from fitbit.api import Fitbit
 
 from fitapp import utils
+from fitapp.models import UserFitbit
 
 from .base import FitappTestBase
 
@@ -89,6 +90,7 @@ class TestRetrievalView(FitappTestBase):
         self.client.logout()
         response = self._get()
         self._check_response(response, 101)
+        self.assertEquals(UserFitbit.objects.count(), 1)
 
     def test_not_active(self):
         """Status code should be 101 when user isn't active."""
@@ -96,36 +98,51 @@ class TestRetrievalView(FitappTestBase):
         self.user.save()
         response = self._get()
         self._check_response(response, 101)
+        self.assertEquals(UserFitbit.objects.count(), 1)
 
     def test_not_integrated(self):
         """Status code should be 102 when user is not integrated."""
         self.fbuser.delete()
         response = self._get()
         self._check_response(response, 102)
+        self.assertEquals(UserFitbit.objects.count(), 0)
 
-    def test_bad_fitbit_data(self):
-        """Status code should be 103 when user integration is invalid."""
+    def test_invalid_credentials_unauthorized(self):
+        """
+        Status code should be 103 & credentials should be deleted when user
+        integration is invalid.
+        """
         response = self._mock_utility(error=fitbit_exceptions.HTTPUnauthorized)
         self._check_response(response, 103)
+        self.assertEquals(UserFitbit.objects.count(), 0)
 
+    def test_invalid_credentials_forbidden(self):
+        """
+        Status code should be 103 & credentials should be deleted when user
+        integration is invalid.
+        """
         response = self._mock_utility(error=fitbit_exceptions.HTTPForbidden)
         self._check_response(response, 103)
+        self.assertEquals(UserFitbit.objects.count(), 0)
 
     def test_bad_period(self):
         """Status code should be 104 when invalid period is given."""
         self.period = 'bad'
         response = self._get()
         self._check_response(response, 104)
+        self.assertEquals(UserFitbit.objects.count(), 1)
 
     def test_rate_limited(self):
         """Status code should be 105 when Fitbit rate limit is hit."""
         response = self._mock_utility(error=fitbit_exceptions.HTTPConflict)
         self._check_response(response, 105)
+        self.assertEquals(UserFitbit.objects.count(), 1)
 
     def test_fitbit_error(self):
         """Status code should be 106 when Fitbit server error occurs."""
         response = self._mock_utility(error=fitbit_exceptions.HTTPServerError)
         self._check_response(response, 106)
+        self.assertEquals(UserFitbit.objects.count(), 1)
 
     def test_retrieval(self):
         """View should return JSON steps data."""
@@ -136,3 +153,4 @@ class TestRetrievalView(FitappTestBase):
             error_msg = 'Should be able to retrieve data for {0}.'.format(
                     self.period)
             self._check_response(response, 100, steps, error_msg)
+            self.assertEquals(UserFitbit.objects.count(), 1)

@@ -7,7 +7,6 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
-from fitbit import exceptions as fitbit_exceptions
 from fitbit.api import Fitbit
 
 from fitapp.models import UserFitbit
@@ -22,7 +21,7 @@ class MockClient(object):
         self.secret = kwargs['secret'] if 'secret' in kwargs else None
 
     def authorize_token_url(self, *args, **kwargs):
-        return reverse('test')
+        return '/test'
 
     def fetch_request_token(self, *args, **kwargs):
         return None
@@ -37,7 +36,7 @@ class MockClient(object):
 
 
 class FitappTestBase(TestCase):
-    urls = 'fitapp.tests.urls'  # Includes only the Fitbit URLs and a test URL
+    urls = 'fitapp.tests.urls'
     TEST_SERVER = 'http://testserver'
 
     def setUp(self):
@@ -81,13 +80,15 @@ class FitappTestBase(TestCase):
         defaults.update(kwargs)
         return Fitbit(**defaults)
 
-    def assertRedirectsNoFollow(self, response, url_name):
+    def assertRedirectsNoFollow(self, response, url, status_code=302):
         """
         Workaround to test whether a response redirects to another URL without
         loading the page at that URL.
         """
-        expected = self.TEST_SERVER + reverse(url_name)
-        self.assertEquals(response._headers['location'][1], expected)
+        self.assertEquals(response.status_code, status_code)
+        full_url = self.TEST_SERVER + url
+        self.assertEquals(response._headers['location'][1], full_url)
+
 
     def _get(self, url_name=None, url_kwargs=None, get_kwargs=None, **kwargs):
         """Convenience wrapper for test client GET request."""

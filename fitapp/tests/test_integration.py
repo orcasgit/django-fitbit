@@ -65,7 +65,7 @@ class TestLoginView(FitappTestBase):
         redirect to an authorization URL.
         """
         response = self._mock_client()
-        self.assertRedirectsNoFollow(response, 'test')
+        self.assertRedirectsNoFollow(response, '/test')
         self.assertTrue('token' in self.client.session)
         self.assertEquals(UserFitbit.objects.count(), 1)
 
@@ -81,7 +81,7 @@ class TestLoginView(FitappTestBase):
         self.fbuser.delete()
         fbuser = self.create_userfitbit(user=self.user)
         response = self._mock_client()
-        self.assertRedirectsNoFollow(response, 'test')
+        self.assertRedirectsNoFollow(response, '/test')
         self.assertTrue('token' in self.client.session)
         self.assertEquals(UserFitbit.objects.count(), 1)
 
@@ -99,9 +99,11 @@ class TestCompleteView(FitappTestBase):
     def _get(self, use_token=True, use_verifier=True, **kwargs):
         if use_token:
             self._set_session_vars(token='token')
+        get_kwargs = kwargs.pop('get_kwargs', {})
         if use_verifier:
-            kwargs.update({'oauth_verifier': 'hello'})
-        return super(TestCompleteView, self)._get(**kwargs)
+            get_kwargs.update({'oauth_verifier': 'hello'})
+        return super(TestCompleteView, self)._get(get_kwargs=get_kwargs,
+                **kwargs)
 
     def _mock_client(self, **kwargs):
         defaults = {
@@ -115,12 +117,12 @@ class TestCompleteView(FitappTestBase):
     def test_get(self):
         """Complete view should fetch & store user's access credentials."""
         response = self._mock_client()
+        self.assertRedirectsNoFollow(response, reverse('fitbit'))
         fbuser = UserFitbit.objects.get()
         self.assertEquals(fbuser.user, self.user)
         self.assertEquals(fbuser.auth_token, self.key)
         self.assertEquals(fbuser.auth_secret, self.secret)
         self.assertEquals(fbuser.fitbit_user, self.user_id)
-        self.assertRedirectsNoFollow(response, 'fitbit')
 
     def test_unauthenticated(self):
         """User must be logged in to access Complete view."""
@@ -133,14 +135,14 @@ class TestCompleteView(FitappTestBase):
         """
         Complete view should redirect to session['fitbit_next'] if available.
         """
-        self._set_session_vars(fitbit_next=reverse('test'))
+        self._set_session_vars(fitbit_next='/test')
         response = self._mock_client()
+        self.assertRedirectsNoFollow(response, '/test')
         fbuser = UserFitbit.objects.get()
         self.assertEquals(fbuser.user, self.user)
         self.assertEquals(fbuser.auth_token, self.key)
         self.assertEquals(fbuser.auth_secret, self.secret)
         self.assertEquals(fbuser.fitbit_user, self.user_id)
-        self.assertRedirectsNoFollow(response, 'test')
 
     def test_access_error(self):
         """
@@ -148,13 +150,13 @@ class TestCompleteView(FitappTestBase):
         inaccessible.
         """
         response = self._mock_client(error=Exception)
-        self.assertRedirectsNoFollow(response, 'fitbit-error')
+        self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEquals(UserFitbit.objects.count(), 0)
 
     def test_no_token(self):
         """Complete view should redirect to error if token isn't in session."""
         response = self._get(use_token=False)
-        self.assertRedirectsNoFollow(response, 'fitbit-error')
+        self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEquals(UserFitbit.objects.count(), 0)
 
     def test_no_verifier(self):
@@ -163,7 +165,7 @@ class TestCompleteView(FitappTestBase):
         present.
         """
         response = self._get(use_verifier=False)
-        self.assertRedirectsNoFollow(response, 'fitbit-error')
+        self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEquals(UserFitbit.objects.count(), 0)
 
     def test_integrated(self):
@@ -177,7 +179,7 @@ class TestCompleteView(FitappTestBase):
         self.assertEquals(fbuser.auth_token, self.key)
         self.assertEquals(fbuser.auth_secret, self.secret)
         self.assertEquals(fbuser.fitbit_user, self.user_id)
-        self.assertRedirectsNoFollow(response, 'fitbit')
+        self.assertRedirectsNoFollow(response, reverse('fitbit'))
 
 
 class TestErrorView(FitappTestBase):
@@ -207,7 +209,7 @@ class TestLogoutView(FitappTestBase):
     def test_get(self):
         """Logout view should remove associated UserFitbit and redirect."""
         response = self._get()
-        self.assertRedirectsNoFollow(response, 'fitbit')
+        self.assertRedirectsNoFollow(response, reverse('fitbit'))
         self.assertEquals(UserFitbit.objects.count(), 0)
 
     def test_unauthenticated(self):
@@ -221,11 +223,11 @@ class TestLogoutView(FitappTestBase):
         """No Fitbit credentials required to access Logout view."""
         self.fbuser.delete()
         response = self._get()
-        self.assertRedirectsNoFollow(response, 'fitbit')
+        self.assertRedirectsNoFollow(response, reverse('fitbit'))
         self.assertEquals(UserFitbit.objects.count(), 0)
 
     def test_next(self):
         """Logout view should redirect to GET['next'] if available."""
-        response = self._get(get_kwargs={'next': reverse('test')})
-        self.assertRedirectsNoFollow(response, 'test')
+        response = self._get(get_kwargs={'next': '/test'})
+        self.assertRedirectsNoFollow(response, '/test')
         self.assertEquals(UserFitbit.objects.count(), 0)

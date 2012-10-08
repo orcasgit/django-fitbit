@@ -1,4 +1,3 @@
-
 # Your Fitbit access credentials. You can request these from Fitbit.
 FITAPP_CONSUMER_KEY = None
 FITAPP_CONSUMER_SECRET = None

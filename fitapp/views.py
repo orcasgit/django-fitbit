@@ -16,10 +16,9 @@ from .models import UserFitbit
 def fitbit(request):
     """View the status of user's Fitbit Oauth credentials."""
     next_url = request.GET.get('next', None)
-    request.session['fitbit_next'] = next_url
-    return render(request, utils.get_integration_template(), {
-        'active': 'fitbit',
-    })
+    if next_url:
+        request.session['fitbit_next'] = next_url
+    return render(request, utils.get_integration_template(), {})
 
 
 @login_required
@@ -83,7 +82,7 @@ def get_steps(request, period):
            'meta': a map containing two things: the 'total_count' of objects,
                    and the 'status_code' of the response.
 
-    When everything goes well, the status_code is 200 and the requested data
+    When everything goes well, the status_code is 100 and the requested data
     is included. However, there are a number of things that can 'go wrong'
     with this call. For each exception, we return no data with a status_code
     to describe what went wrong on our end:
@@ -91,7 +90,8 @@ def get_steps(request, period):
     100 OK              no message -- Response contains JSON steps data.
     101 Not Logged In   User is not logged in.
     102 Not Integrated  User is not integrated with Fitbit.
-    103 Bad Credentials Fitbit authentication credentials are invalid.
+    103 Bad Credentials Fitbit authentication credentials are invalid and have
+                        been removed.
     104 Bad Request     Requested period should be one of [1d, 7d, 30d, 1w,
                         1m, 3m, 6m, 1y, max].
     105 Rate Limited    User exceeded the Fitbit limit of 150 calls/hour.
@@ -121,6 +121,8 @@ def get_steps(request, period):
     try:
         steps = utils.get_fitbit_steps(fbuser, period)
     except (HTTPUnauthorized, HTTPForbidden):
+        # Delete invalid credentials.
+        fbuser.delete()
         return make_response(103)
     except HTTPConflict:
         return make_response(105)

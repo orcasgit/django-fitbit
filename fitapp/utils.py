@@ -49,7 +49,6 @@ def get_fitbit_steps(fbuser, period):
         HTTPBadRequest   - >=400 - Bad request.
     """
     fb = create_fitbit(**fbuser.get_user_data())
-    data = None
     data = fb.time_series('activities/steps', period=period)
     steps = data['activities-steps']
     return steps
