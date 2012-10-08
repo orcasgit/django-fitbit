@@ -12,12 +12,8 @@ from .base import FitappTestBase
 class TestRetrievalUtility(FitappTestBase):
     """Tests for the get_fitbit_steps utility function."""
 
-    def setUp(self):
-        super(TestRetrievalUtility, self).setUp()
-        self.fb = self.create_fitbit(**self.fbuser.get_user_data())
-
     @patch.object(Fitbit, 'time_series')
-    def mock_time_series(self, time_series=None, error=None, response=None):
+    def _mock_time_series(self, time_series=None, error=None, response=None):
         if error:
             time_series.side_effect = error('')
         elif response:
@@ -26,7 +22,7 @@ class TestRetrievalUtility(FitappTestBase):
 
     def _error_test(self, error):
         with self.assertRaises(error) as c:
-            self.mock_time_series(error=error)
+            self._mock_time_series(error=error)
 
     def test_value_error(self):
         """ValueError from the Fitbit.time_series should propagate."""
@@ -72,19 +68,12 @@ class TestRetrievalView(FitappTestBase):
         super(TestRetrievalView, self).setUp()
         self.period = '30d'
 
-    def _get(self, url_name=None, period=None, **kwargs):
+    def _get(self, period=None, **kwargs):
         period = period or self.period
         url_kwargs = {'period': period}
-        return super(TestRetrievalView, self)._get(url_name,
-                url_kwargs=url_kwargs, **kwargs)
-
-    @patch('fitapp.utils.get_fitbit_steps')
-    def mock_utility(self, utility=None, error=None, response=None):
-        if error:
-            utility.side_effect = error('')
-        if response:
-            utility.return_value = response
-        return self._get()
+        url_kwargs.update(kwargs.get('url_kwargs', {}))
+        return super(TestRetrievalView, self)._get(url_kwargs=url_kwargs,
+                **kwargs)
 
     def test_not_authenticated(self):
         """View should return 404 when user isn't logged in."""
@@ -107,10 +96,10 @@ class TestRetrievalView(FitappTestBase):
 
     def test_bad_fitbit_data(self):
         """View should return 403 when user integration is invalid."""
-        response = self.mock_utility(error=fitbit_exceptions.HTTPUnauthorized)
+        response = self._mock_utility(error=fitbit_exceptions.HTTPUnauthorized)
         self.assertEquals(response.status_code, 403)
 
-        response = self.mock_utility(error=fitbit_exceptions.HTTPForbidden)
+        response = self._mock_utility(error=fitbit_exceptions.HTTPForbidden)
         self.assertEquals(response.status_code, 403)
 
     def test_bad_period(self):
@@ -121,12 +110,12 @@ class TestRetrievalView(FitappTestBase):
 
     def test_rate_limited(self):
         """View should return 409 when Fitbit rate limit is hit."""
-        response = self.mock_utility(error=fitbit_exceptions.HTTPConflict)
+        response = self._mock_utility(error=fitbit_exceptions.HTTPConflict)
         self.assertEquals(response.status_code, 409)
 
     def test_fitbit_error(self):
         """View should return 502 when Fitbit server error occurs."""
-        response = self.mock_utility(error=fitbit_exceptions.HTTPServerError)
+        response = self._mock_utility(error=fitbit_exceptions.HTTPServerError)
         self.assertEquals(response.status_code, 502)
 
     def test_retrieval(self):
@@ -134,7 +123,7 @@ class TestRetrievalView(FitappTestBase):
         steps = [{'dateTime': '2000-01-01', 'value': 10}]
         for period in self.valid_periods:
             self.period = period
-            response = self.mock_utility(response=steps)
+            response = self._mock_utility(response=steps)
             error_msg = 'Should be able to retrieve data for {0}.'.format(
                     self.period)
             self.assertEquals(response.status_code, 200, error_msg)

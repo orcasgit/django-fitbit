@@ -41,8 +41,11 @@ def login(request):
 def complete(request):
     """Called back from Fitbit after the user grants us authorization."""
     fb = utils.create_fitbit()
-    token = request.session.get('token', None)
-    verifier = request.GET.get('oauth_verifier', None)
+    try:
+        token = request.session.pop('token')
+        verifier = request.GET.get('oauth_verifier')
+    except KeyError:
+        return redirect(reverse('fitbit-error'))
     try:
         access_token = fb.client.fetch_access_token(token, verifier)
     except:

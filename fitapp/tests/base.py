@@ -37,7 +37,8 @@ class MockClient(object):
 
 
 class FitappTestBase(TestCase):
-    urls = 'fitapp.tests.urls'
+    urls = 'fitapp.tests.urls'  # Includes only the Fitbit URLs and a test URL
+    TEST_SERVER = 'http://testserver'
 
     def setUp(self):
         self.username = self.random_string(25)
@@ -80,20 +81,43 @@ class FitappTestBase(TestCase):
         defaults.update(kwargs)
         return Fitbit(**defaults)
 
-    def assert_correct_redirect(self, response, url_name):
-        url = 'http://testserver' + reverse(url_name)
-        self.assertEquals(response._headers['location'][1], url)
+    def assertRedirectsNoFollow(self, response, url_name):
+        """
+        Workaround to test whether a response redirects to another URL without
+        loading the page at that URL.
+        """
+        expected = self.TEST_SERVER + reverse(url_name)
+        self.assertEquals(response._headers['location'][1], expected)
 
-    def _get(self, url_name=None, url_kwargs=None, **kwargs):
-        """Convenience wrapper for test client get request."""
+    def _get(self, url_name=None, url_kwargs=None, get_kwargs=None, **kwargs):
+        """Convenience wrapper for test client GET request."""
         url_name = url_name or self.url_name
-        url_kwargs = url_kwargs or {}
-        url = reverse(url_name, kwargs=url_kwargs)
-        if kwargs:
-            url += '?' + urlencode(kwargs)
-        return self.client.get(url)
+        url = reverse(url_name, kwargs=url_kwargs)  # Base URL.
+
+        # Add GET parameters.
+        if get_kwargs:
+            url += '?' + urlencode(get_kwargs)
+
+        return self.client.get(url, **kwargs)
+
+    def _set_session_vars(self, **kwargs):
+        session = self.client.session
+        for key, value in kwargs.items():
+            session[key] = value
+        try:
+            session.save()  # Only available on authenticated sessions.
+        except AttributeError:
+            pass
 
     @patch('fitbit.api.FitbitOauthClient')
-    def mock_client(self, client=None, **kwargs):
+    def _mock_client(self, client=None, **kwargs):
         client.return_value = MockClient(**kwargs)
+        return self._get()
+
+    @patch('fitapp.utils.get_fitbit_steps')
+    def _mock_utility(self, utility=None, error=None, response=None):
+        if error:
+            utility.side_effect = error('')
+        elif response:
+            utility.return_value = response
         return self._get()
