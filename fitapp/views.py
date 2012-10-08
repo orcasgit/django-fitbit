@@ -8,8 +8,8 @@ from django.shortcuts import redirect, render
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPNotFound,
         HTTPConflict, HTTPServerError, HTTPBadRequest)
 
-from .models import UserFitbit
 from . import utils
+from .models import UserFitbit
 
 
 @login_required
@@ -17,7 +17,7 @@ def fitbit(request):
     """View the status of user's Fitbit Oauth credentials."""
     next_url = request.GET.get('next', None)
     request.session['fitbit_next'] = next_url
-    return render(request, 'fitapp/index.html', {
+    return render(request, utils.get_integration_template(), {
         'active': 'fitbit',
     })
 
@@ -41,31 +41,29 @@ def login(request):
 def complete(request):
     """Called back from Fitbit after the user grants us authorization."""
     fb = utils.create_fitbit()
-    token = request.session['token']
-    verifier = request.GET['oauth_verifier']
+    token = request.session.get('token', None)
+    verifier = request.GET.get('oauth_verifier', None)
     try:
         access_token = fb.client.fetch_access_token(token, verifier)
     except:
         return redirect(reverse('fitbit-error'))
-    fbuser, created = UserFitbit.objects.get_or_create(user=request.user,
+    fbuser, _ = UserFitbit.objects.get_or_create(user=request.user,
             auth_token=access_token.key, auth_secret=access_token.secret,
             fitbit_user=fb.client.user_id)
-    next_url = request.session.pop('fitbit_next', reverse('fitbit'))
-    next_url = next_url or reverse('fitbit')
+    next_url = request.session.pop('fitbit_next', None) or reverse('fitbit')
     return redirect(next_url)
 
 
 @login_required
 def error(request):
-    return render(request, 'fitapp/error.html', {})
+    return render(request, utils.get_error_template(), {})
 
 
 @login_required
 def logout(request):
     """Remove this user's Fitbit credentials."""
     UserFitbit.objects.filter(user=request.user).delete()
-    next_url = request.session.pop('fitbit_next', reverse('fitbit'))
-    next_url = next_url or reverse('fitbit')
+    next_url = request.GET.get('next', None) or reverse('fitbit')
     return redirect(next_url)
 
 

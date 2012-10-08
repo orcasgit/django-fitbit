@@ -2,6 +2,7 @@ from django.conf import settings
 
 from fitbit import Fitbit
 
+from . import defaults
 from .models import UserFitbit
 
 
@@ -12,9 +13,11 @@ def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
     specified in settings are used.
     """
     if consumer_key is None:
-        consumer_key = getattr(settings, 'FITBIT_CONSUMER_KEY', None)
+        consumer_key = getattr(settings, 'FITAPP_CONSUMER_KEY',
+                defaults.FITAPP_CONSUMER_KEY)
     if consumer_secret is None:
-        consumer_secret = getattr(settings, 'FITBIT_CONSUMER_SECRET', None)
+        consumer_secret = getattr(settings, 'FITAPP_CONSUMER_SECRET',
+                defaults.FITAPP_CONSUMER_SECRET)
     return Fitbit(consumer_key=consumer_key, consumer_secret=consumer_secret,
             **kwargs)
 
@@ -45,3 +48,13 @@ def get_fitbit_steps(fbuser, period):
     data = fb.time_series('activities/steps', period=period)
     steps = data['activities-steps']
     return steps
+
+
+def get_integration_template():
+    return getattr(settings, 'FITAPP_INTEGRATION_TEMPLATE',
+            defaults.FITAPP_INTEGRATION_TEMPLATE)
+
+
+def get_error_template():
+    return getattr(settings, 'FITAPP_ERROR_TEMPLATE',
+            defaults.FITAPP_ERROR_TEMPLATE)
