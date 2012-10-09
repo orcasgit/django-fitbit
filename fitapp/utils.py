@@ -31,6 +31,8 @@ def is_integrated(user):
     """Returns True if we have Oauth info for the user.
 
     This does not currently require that the token and secret are valid.
+
+    :param user: A Django User.
     """
     return UserFitbit.objects.filter(user=user).exists()
 

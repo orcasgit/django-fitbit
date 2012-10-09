@@ -15,3 +15,4 @@ There are several views and decorators your site will use to drive Fitbit integr
 
 .. autofunction:: fitapp.views.logout
 
+.. autofunction:: fitapp.views.get_steps

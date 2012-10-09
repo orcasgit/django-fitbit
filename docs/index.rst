@@ -14,6 +14,8 @@ Contents:
    starting
    settings
    views
+   templatetags
+   utils
    links
    releases
 

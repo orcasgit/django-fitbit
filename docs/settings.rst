@@ -1,6 +1,9 @@
 Settings
 ========
 
+.. index::
+    single: FITAPP_CONSUMER_KEY
+
 .. _FITAPP_CONSUMER_KEY:
 
 FITAPP_CONSUMER_KEY
@@ -8,6 +11,9 @@ FITAPP_CONSUMER_KEY
 
 The key assigned to your app by Fitbit when you register your app at
 `the Fitbit developer site <http://dev.fitbit.com/>`_.
+
+.. index::
+    single: FITAPP_CONSUMER_SECRET
 
 .. _FITAPP_CONSUMER_SECRET:
 
