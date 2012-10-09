@@ -15,10 +15,10 @@ from fitapp.models import UserFitbit
 class MockClient(object):
 
     def __init__(self, **kwargs):
-        self.user_id = kwargs['user_id'] if 'user_id' in kwargs else None
-        self.error = kwargs['error'] if 'error' in kwargs else None
-        self.key = kwargs['key'] if 'key' in kwargs else None
-        self.secret = kwargs['secret'] if 'secret' in kwargs else None
+        self.user_id = kwargs.get('user_id', None)
+        self.error = kwargs.get('error', None)
+        self.key = kwargs.get('key', None)
+        self.secret = kwargs.get('secret', None)
 
     def authorize_token_url(self, *args, **kwargs):
         return '/test'

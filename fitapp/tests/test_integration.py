@@ -17,17 +17,6 @@ class TestIntegrationUtility(FitappTestBase):
         UserFitbit.objects.all().delete()
         self.assertFalse(utils.is_integrated(self.user))
 
-    def test_other_user_is_integrated(self):
-        """utils.is_integrated can be called on any user."""
-        user2 = self.create_user()
-        fbuser2 = self.create_userfitbit(user=user2)
-        self.assertTrue(utils.is_integrated(user2))
-
-    def test_other_user_is_not_integrated(self):
-        """utils.is_integrated can be called on any user."""
-        user2 = self.create_user()
-        self.assertFalse(utils.is_integrated(user2))
-
 
 class TestFitbitView(FitappTestBase):
     url_name = 'fitbit'
@@ -41,6 +30,7 @@ class TestFitbitView(FitappTestBase):
         """Fitbit credentials are not necessary to access Fitbit page."""
         self.fbuser.delete()
         response = self._get()
+        self.assertEquals(response.status_code, 200)
 
     def test_unauthenticated(self):
         """User must be logged in to access Fitbit view."""
@@ -53,7 +43,6 @@ class TestFitbitView(FitappTestBase):
         response = self._get(get_kwargs={'next': 'hello'})
         self.assertEquals(response.status_code, 200)
         self.assertEquals(self.client.session['fitbit_next'], 'hello')
-        self.assertEquals(response.status_code, 200)
 
 
 class TestLoginView(FitappTestBase):

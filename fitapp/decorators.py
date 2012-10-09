@@ -17,9 +17,9 @@ def fitbit_required(view_func):
         if not utils.is_integrated(user):
             url = '{0}?next={1}'.format(reverse('fitbit'), request.path)
             error_msg = 'Oh no! We can\'t display your physical activity ' \
-                    'data because your account isn\'t with Fitbit. Please ' \
-                    '<a href=\'{0}\'>integrate your account</a> so that we ' \
-                    'can track your progress.'.format(url)
+                    'data because your account isn\'t integrated with ' \
+                    'Fitbit. Please <a href=\'{0}\'>integrate your account' \
+                    '</a> in order to track your progress.'.format(url)
             messages.error(request, error_msg)
         return view_func(request, *args, **kwargs)
     return wrapper
