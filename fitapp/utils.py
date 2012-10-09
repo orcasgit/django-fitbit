@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from fitbit import Fitbit
 
@@ -13,11 +14,15 @@ def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
     specified in settings are used.
     """
     if consumer_key is None:
-        consumer_key = getattr(settings, 'FITAPP_CONSUMER_KEY',
-                defaults.FITAPP_CONSUMER_KEY)
+        consumer_key = getattr(settings, 'FITAPP_CONSUMER_KEY', None)
     if consumer_secret is None:
-        consumer_secret = getattr(settings, 'FITAPP_CONSUMER_SECRET',
-                defaults.FITAPP_CONSUMER_SECRET)
+        consumer_secret = getattr(settings, 'FITAPP_CONSUMER_SECRET', None)
+
+    if consumer_key is None or consumer_secret is None:
+        raise ImproperlyConfigured("Consumer key and consumer secret cannot "
+                "be null, and must be explicitly specified or set in your "
+                "Django settings")
+
     return Fitbit(consumer_key=consumer_key, consumer_secret=consumer_secret,
             **kwargs)
 

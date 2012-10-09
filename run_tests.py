@@ -21,6 +21,9 @@ if not settings.configured:
         ],
         SECRET_KEY='something-secret',
         ROOT_URLCONF='fitapp.urls',
+
+        FITAPP_CONSUMER_KEY='',
+        FITAPP_CONSUMER_SECRET='',
     )
 
 
