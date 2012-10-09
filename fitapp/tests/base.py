@@ -36,7 +36,6 @@ class MockClient(object):
 
 
 class FitappTestBase(TestCase):
-    urls = 'fitapp.tests.urls'
     TEST_SERVER = 'http://testserver'
 
     def setUp(self):
