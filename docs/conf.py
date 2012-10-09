@@ -240,3 +240,16 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+
+# -- So we can import modules that need Django
+# Thanks ironfroggy <http://techblog.ironfroggy.com/2012/06/how-to-use-sphinx-autodoc-on.html>
+import sys, os
+
+sys.path.append(os.path.dirname(__file__))
+import django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+if django.VERSION < (1, 4):
+    from django.core.management import setup_environ
+    settings = __import__(os.environ["DJANGO_SETTINGS_MODULE"])
+    setup_environ(settings)
