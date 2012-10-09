@@ -1,9 +1,7 @@
 from setuptools import setup, find_packages
 
-# FIXME: Can't install python-fitbit from setup.py until it's on PyPI
-# For now, use "pip install -r requirements.txt"
-required = ["fitbit"] + \
-           [line for line in open('requirements.txt').read().split("\n") if not line.startswith("git")]
+required = ["fitbit>=0.0.2"] + \
+           [line for line in open('requirements.txt').read().split("\n") if not line.startswith("http")]
 
 setup(
     name="django-fitbit",
@@ -12,6 +10,7 @@ setup(
     author_email="",
     packages=find_packages(),
     install_requires=["distribute"] + required,
+    dependency_links=["https://github.com/orcasgit/python-fitbit/tarball/master#egg=fitbit-0.0.2"],
     include_package_data=True,
     url="https://github.com/orcasgit/django-fitbit/",
     license="",
