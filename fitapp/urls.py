@@ -1,4 +1,4 @@
-from django.conf.urls import patterns, include, url
+from django.conf.urls import patterns, url
 
 from . import views
 
@@ -6,14 +6,19 @@ from . import views
 urlpatterns = patterns('',
 
     # OAuth authentication
-    url('^$',
+    url(r'^$',
             views.fitbit, name='fitbit'),
-    url('^login/$',
+    url(r'^login/$',
             views.login, name='fitbit-login'),
-    url('^complete/$',
+    url(r'^complete/$',
             views.complete, name='fitbit-complete'),
-    url('^error/$',
+    url(r'^error/$',
             views.error, name='fitbit-error'),
-    url('^logout/$',
+    url(r'^logout/$',
             views.logout, name='fitbit-logout'),
+
+
+    # Fitbit data retrieval
+    url(r'^get_steps/(?P<period>\w+)/',
+            views.get_steps, name='fitbit-steps'),
 )

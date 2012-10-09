@@ -1,18 +1,25 @@
+from django.contrib import messages
 from django.core.urlresolvers import reverse
-from django.shortcuts import redirect
 
 from . import utils
 
 
 def fitbit_required(view_func):
     """
-    Redirects the user to the Fitbit integration page if their account is not
-    integrated with Fitbit.
+    Adds a message to inform the user about Fitbit integration if their
+    account is not already integrated with Fitbit.
+
+    The template(s) for any view with this decorator should display a user's
+    messages.
     """
     def wrapper(request, *args, **kwargs):
         user = request.user
         if not utils.is_integrated(user):
             url = '{0}?next={1}'.format(reverse('fitbit'), request.path)
-            return redirect(url)
+            error_msg = 'Oh no! We can\'t display your physical activity ' \
+                    'data because your account isn\'t integrated with ' \
+                    'Fitbit. Please <a href=\'{0}\'>integrate your account' \
+                    '</a> in order to track your progress.'.format(url)
+            messages.error(request, error_msg)
         return view_func(request, *args, **kwargs)
     return wrapper

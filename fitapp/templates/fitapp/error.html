@@ -1,13 +1,14 @@
-{% extends 'base.html' %}
 {% load url from future %}
 
-{% block content %}
-    <nav id="nav-main" class="standout">
-        <h1><a href="{% url 'fitbit' %}">Fitbit Authentication Error</a></h1>
-    </nav>
-    <div id="page">
+<html>
+    <head>
+        <title>Fitbit Authentication Error</title>
+    </head>
+    <body>
+        <h1>Fitbit Authentication Error</h1>
+
         <p>We encountered an error while attempting to authenticate you through Fitbit.</p>
 
         <p><a href="{% url 'fitbit' %}">Retry Fitbit Authentication</a></p>
-    </div>
-{% endblock content %}
+    </body>
+</html>
