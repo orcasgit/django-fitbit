@@ -183,6 +183,11 @@ def get_steps(request, period):
         105 Rate Limited    User exceeded the Fitbit limit of 150 calls/hour.
         106 Fitbit Error    Please try again soon.
 
+    :param request: The HTTPRequest object
+    :param period: A string, one of '1d', '7d', '30d', '1w', '1m', '3m', '6m', '1y', 'max'
+
+    See also the `Fitbit API doc for Get Time Series <https://wiki.fitbit.com/display/API/API-Get-Time-Series>`_.
+
     URL name:
         `fitbit-steps`
     """

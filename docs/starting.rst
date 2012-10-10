@@ -33,3 +33,5 @@ Getting started
 
 7. To send the user through authorization at the Fitbit site for your app to access their data, send
    them to the :py:func:`fitapp.views.login` view.
+
+8. To get step data for a user from a web page, use the AJAX :py:func:`fitapp.views.get_steps` view.
