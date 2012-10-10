@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_GET
 
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPNotFound,
         HTTPConflict, HTTPServerError, HTTPBadRequest)
@@ -43,7 +44,8 @@ def fitbit(request):
     next_url = request.GET.get('next', None)
     if next_url:
         request.session['fitbit_next'] = next_url
-    return render(request, utils.get_integration_template(), {})
+    return render(request, utils.get_setting('FITAPP_INTEGRATION_TEMPLATE'),
+            {})
 
 
 @login_required
@@ -109,7 +111,7 @@ def error(request):
     URL name:
         `fitbit-error`
 
-    Uses the template from the setting :ref:`FITAPP_INTEGRATION_TEMPLATE`.
+    Uses the template from the setting :ref:`FITAPP_ERROR_TEMPLATE`.
 
     The default template just tells them there was an error and offers a link to try again::
 
@@ -129,7 +131,8 @@ def error(request):
         </html>
 
     """
-    return render(request, utils.get_error_template(), {})
+    return render(request, utils.get_setting('FITAPP_ERROR_TEMPLATE'), {})
+>>>>>>> master
 
 
 @login_required
@@ -147,10 +150,12 @@ def logout(request):
     return redirect(next_url)
 
 
+@require_GET
 def get_steps(request, period):
     """An AJAX view that retrieves this user's steps data from Fitbit for the requested period.
 
-    The response body contains a JSON-encoded map with two things:
+    This view may only be retrieved through a GET request. The response body
+    contains a JSON-encoded map with two things:
 
     'objects'
         an ordered list (from oldest to newest) of daily steps data
@@ -190,7 +195,7 @@ def get_steps(request, period):
         }
         return HttpResponse(json.dumps(data))
 
-    # Check that user is logged in and integrated with Fitbit.
+    # Manually check that user is logged in and integrated with Fitbit.
     user = request.user
     if not user.is_authenticated() or not user.is_active:
         return make_response(101)

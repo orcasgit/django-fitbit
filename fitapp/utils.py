@@ -14,9 +14,9 @@ def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
     specified in settings are used.
     """
     if consumer_key is None:
-        consumer_key = getattr(settings, 'FITAPP_CONSUMER_KEY', None)
+        consumer_key = get_setting('FITAPP_CONSUMER_KEY')
     if consumer_secret is None:
-        consumer_secret = getattr(settings, 'FITAPP_CONSUMER_SECRET', None)
+        consumer_secret = get_setting('FITAPP_CONSUMER_SECRET')
 
     if consumer_key is None or consumer_secret is None:
         raise ImproperlyConfigured("Consumer key and consumer secret cannot "
@@ -61,11 +61,17 @@ def get_fitbit_steps(fbuser, period):
     return steps
 
 
-def get_integration_template():
-    return getattr(settings, 'FITAPP_INTEGRATION_TEMPLATE',
-            defaults.FITAPP_INTEGRATION_TEMPLATE)
+def get_setting(name, use_defaults=True):
+    """Retrieves the specified setting from the settings file.
 
-
-def get_error_template():
-    return getattr(settings, 'FITAPP_ERROR_TEMPLATE',
-            defaults.FITAPP_ERROR_TEMPLATE)
+    If the setting is not found and use_defaults is True, then the default
+    value specified in defaults.py is used. Otherwise, we raise an
+    ImproperlyConfigured exception for the setting.
+    """
+    if hasattr(settings, name):
+        return getattr(settings, name)
+    if use_defaults:
+        if hasattr(defaults, name):
+            return getattr(defaults, name)
+    msg = "{0} must be specified in your settings".format(name)
+    raise ImproperlyConfigured(msg)

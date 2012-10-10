@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import optparse
 import sys
 
 from django.conf import settings
@@ -30,9 +31,13 @@ if not settings.configured:
 from django.test.utils import get_runner
 
 def run_tests():
+    parser = optparse.OptionParser()
+    _, tests = parser.parse_args()
+    tests = tests or ['fitapp']
+
     TestRunner = get_runner(settings)
     test_runner = TestRunner(verbosity=1, interactive=True, failfast=False)
-    sys.exit(test_runner.run_tests(['fitapp']))
+    sys.exit(test_runner.run_tests(tests))
 
 
 if __name__ == '__main__':
