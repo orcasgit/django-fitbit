@@ -59,16 +59,16 @@ def get_fitbit_steps(fbuser, period):
     return steps
 
 
-def get_setting(name, default=True):
+def get_setting(name, use_defaults=True):
     """Retrieves the specified setting from the settings file.
 
-    If the setting is not found and default is True, then the default value
-    specified in defaults.py is used. Otherwise, we raise an
+    If the setting is not found and use_defaults is True, then the default
+    value specified in defaults.py is used. Otherwise, we raise an
     ImproperlyConfigured exception for the setting.
     """
     if hasattr(settings, name):
         return getattr(settings, name)
-    if default:
+    if use_defaults:
         if hasattr(defaults, name):
             return getattr(defaults, name)
     msg = "{0} must be specified in your settings".format(name)

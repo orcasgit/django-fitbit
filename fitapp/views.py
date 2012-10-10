@@ -2,8 +2,9 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse, HttpResponseNotAllowed
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_GET
 
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPNotFound,
         HTTPConflict, HTTPServerError, HTTPBadRequest)
@@ -72,6 +73,7 @@ def logout(request):
     return redirect(next_url)
 
 
+@require_GET
 def get_steps(request, period):
     """Retrieves this user's steps data from Fitbit for the requested period.
 
@@ -106,10 +108,6 @@ def get_steps(request, period):
             'objects': steps,
         }
         return HttpResponse(json.dumps(data))
-
-    allowed_methods = ['GET']
-    if not request.method in allowed_methods:
-        return HttpResponseNotAllowed(allowed_methods)
 
     # Manually check that user is logged in and integrated with Fitbit.
     user = request.user
