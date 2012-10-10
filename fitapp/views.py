@@ -18,7 +18,8 @@ def fitbit(request):
     next_url = request.GET.get('next', None)
     if next_url:
         request.session['fitbit_next'] = next_url
-    return render(request, utils.get_integration_template(), {})
+    return render(request, utils.get_setting('FITAPP_INTEGRATION_TEMPLATE'),
+            {})
 
 
 @login_required
@@ -60,7 +61,7 @@ def complete(request):
 
 @login_required
 def error(request):
-    return render(request, utils.get_error_template(), {})
+    return render(request, utils.get_setting('FITAPP_ERROR_TEMPLATE'), {})
 
 
 @login_required
