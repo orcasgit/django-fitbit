@@ -11,6 +11,18 @@ def fitbit_required(view_func):
 
     The template(s) for any view with this decorator should display a user's
     messages.
+
+    The link displayed in the message will remember whatever view the user
+    was trying to get to, and return them there after they've authorized us.
+
+    Example::
+
+        from fitapp.decorators import fitbit_required
+
+        @fitbit_required
+        def my_view(request):
+            ...
+
     """
     def wrapper(request, *args, **kwargs):
         user = request.user
