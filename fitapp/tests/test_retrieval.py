@@ -1,6 +1,8 @@
 import json
 from mock import patch
 
+from django.core.urlresolvers import reverse
+
 from fitbit import exceptions as fitbit_exceptions
 from fitbit.api import Fitbit
 
@@ -144,7 +146,7 @@ class TestRetrievalView(FitappTestBase):
         self._check_response(response, 106)
         self.assertEquals(UserFitbit.objects.count(), 1)
 
-    def test_retrieval(self):
+    def test_get(self):
         """View should return JSON steps data."""
         steps = [{'dateTime': '2000-01-01', 'value': 10}]
         for period in self.valid_periods:
@@ -154,3 +156,11 @@ class TestRetrievalView(FitappTestBase):
                     self.period)
             self._check_response(response, 100, steps, error_msg)
             self.assertEquals(UserFitbit.objects.count(), 1)
+
+    def test_405(self):
+        """View should not respond to anything but a GET request."""
+        url = reverse('fitbit-steps', kwargs={'period': self.period})
+        for method in (self.client.post, self.client.head,
+                self.client.options, self.client.put, self.client.delete):
+            response = method(url)
+            self.assertEquals(response.status_code, 405)

@@ -2,7 +2,7 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPNotFound,
@@ -75,7 +75,8 @@ def logout(request):
 def get_steps(request, period):
     """Retrieves this user's steps data from Fitbit for the requested period.
 
-    The response body contains a JSON-encoded map with two things:
+    This view may only be retrieved through a GET request. The response body
+    contains a JSON-encoded map with two things:
         'objects': an ordered list (from oldest to newest) of daily steps data
                    for the requested period. Each day is of the format:
                         {'dateTime': 'yyyy-mm-dd', 'value': 123}
@@ -106,7 +107,11 @@ def get_steps(request, period):
         }
         return HttpResponse(json.dumps(data))
 
-    # Check that user is logged in and integrated with Fitbit.
+    allowed_methods = ['GET']
+    if not request.method in allowed_methods:
+        return HttpResponseNotAllowed(allowed_methods)
+
+    # Manually check that user is logged in and integrated with Fitbit.
     user = request.user
     if not user.is_authenticated() or not user.is_active:
         return make_response(101)
