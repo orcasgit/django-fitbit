@@ -132,7 +132,6 @@ def error(request):
 
     """
     return render(request, utils.get_setting('FITAPP_ERROR_TEMPLATE'), {})
->>>>>>> master
 
 
 @login_required
