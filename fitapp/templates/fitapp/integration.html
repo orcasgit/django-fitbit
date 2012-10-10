@@ -1,0 +1,15 @@
+{% load url from future %}
+{% load fitbit %}
+
+<html>
+    <head>
+        <title>Fitbit Integration</title>
+    </head>
+    <body>
+        {% if request.user|is_integrated_with_fitbit %}
+            <p><a href="{% url 'fitbit-logout' %}">Remove Fitbit integration from this account</a></p>
+        {% else %}
+            <p><a href="{% url 'fitbit-login' %}">Integrate your account with Fitbit</a></p>
+        {% endif %}
+    </body>
+</html>
