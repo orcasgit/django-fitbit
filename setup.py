@@ -16,7 +16,7 @@ setup(
     long_description=open("README.md").read(),
     classifiers=[
         "Development Status :: 3 - Alpha",
-        'License :: OSI Approved :: Apache 2.0',
+        'License :: OSI Approved :: Apache Software License',
         "Environment :: Web Environment",
         "Framework :: Django",
         "Intended Audience :: Developers",
