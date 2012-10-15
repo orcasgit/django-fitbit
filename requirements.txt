@@ -1,1 +1,1 @@
-https://github.com/orcasgit/python-fitbit/tarball/master#egg=fitbit
+fitbit==0.0.2

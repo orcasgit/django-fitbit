@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 
-required = ["fitbit>=0.0.2"] + \
-           [line for line in open('requirements.txt').read().split("\n") if not line.startswith("http")]
+required = [line for line in open('requirements.txt').read().split("\n")]
 
 setup(
     name="django-fitbit",
@@ -10,7 +9,6 @@ setup(
     author_email="",
     packages=find_packages(),
     install_requires=["distribute"] + required,
-    dependency_links=["https://github.com/orcasgit/python-fitbit/tarball/master#egg=fitbit-0.0.2"],
     include_package_data=True,
     url="https://github.com/orcasgit/django-fitbit/",
     license="",
