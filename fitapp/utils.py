@@ -42,11 +42,13 @@ def get_valid_periods():
     return ['1d', '7d', '30d', '1w', '1m', '3m', '6m', '1y', 'max']
 
 
-def get_fitbit_steps(fbuser, period):
+def get_fitbit_steps(fbuser, base_date=None, period=None, end_date=None):
     """Creates a Fitbit API instance and retrieves step data for the period.
 
     Several exceptions may be thrown:
-        ValueError       - Invalid period argument.
+        TypeError        - Either end_date or period must be specified, but
+                           not both.
+        ValueError       - Invalid argument formats.
         HTTPUnauthorized - 401 - fbuser has bad authentication credentials.
         HTTPForbidden    - 403 - This isn't specified by Fitbit, but does
                                  appear in the Python Fitbit library.
@@ -56,7 +58,8 @@ def get_fitbit_steps(fbuser, period):
         HTTPBadRequest   - >=400 - Bad request.
     """
     fb = create_fitbit(**fbuser.get_user_data())
-    data = fb.time_series('activities/steps', period=period)
+    data = fb.time_series('activities/steps', period=period,
+            base_date=base_date, end_date=end_date)
     steps = data['activities-steps']
     return steps
 

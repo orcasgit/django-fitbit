@@ -19,6 +19,6 @@ urlpatterns = patterns('',
 
 
     # Fitbit data retrieval
-    url(r'^get_steps/(?P<period>\w+)/',
+    url(r'^get_steps/$',
             views.get_steps, name='fitbit-steps'),
 )

@@ -115,9 +115,9 @@ class FitappTestBase(TestCase):
         return self._get()
 
     @patch('fitapp.utils.get_fitbit_steps')
-    def _mock_utility(self, utility=None, error=None, response=None):
+    def _mock_utility(self, utility=None, error=None, response=None, **kwargs):
         if error:
             utility.side_effect = error('')
         elif response:
             utility.return_value = response
-        return self._get()
+        return self._get(**kwargs)
