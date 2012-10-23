@@ -110,9 +110,10 @@ class FitappTestBase(TestCase):
             pass
 
     @patch('fitbit.api.FitbitOauthClient')
-    def _mock_client(self, client=None, **kwargs):
-        client.return_value = MockClient(**kwargs)
-        return self._get()
+    def _mock_client(self, client=None, client_kwargs=None, **kwargs):
+        client_kwargs = client_kwargs or {}
+        client.return_value = MockClient(**client_kwargs)
+        return self._get(**kwargs)
 
     @patch('fitapp.utils.get_fitbit_steps')
     def _mock_utility(self, utility=None, error=None, response=None, **kwargs):

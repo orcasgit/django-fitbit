@@ -1,6 +1,12 @@
+import mock
+
+from django.contrib import messages
+from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
+from django.http import HttpRequest
 
 from fitapp import utils
+from fitapp.decorators import fitbit_required, DEFAULT_MESSAGE_TEXT
 from fitapp.models import UserFitbit
 
 from .base import FitappTestBase
@@ -16,6 +22,73 @@ class TestIntegrationUtility(FitappTestBase):
         """User is not integrated if we have no OAuth data for them."""
         UserFitbit.objects.all().delete()
         self.assertFalse(utils.is_integrated(self.user))
+
+    def test_unauthenticated(self):
+        """User is not integrated if they aren't logged in."""
+        user = AnonymousUser()
+        self.assertFalse(utils.is_integrated(user))
+
+
+class TestIntegrationDecorator(FitappTestBase):
+
+    def setUp(self):
+        super(TestIntegrationDecorator, self).setUp()
+        self.mock_request = HttpRequest()
+        self.mock_request.user = self.user
+        self.mock_view = lambda request: "hello"
+        self.messages = []
+
+    def _mock_decorator(self, msg=None):
+        def mock_error(request, message, *args, **kwargs):
+            self.messages.append(message)
+
+        with mock.patch.object(messages, 'error', mock_error) as error:
+            return fitbit_required(msg=msg)(self.mock_view)(self.mock_request)
+
+    def test_unauthenticated(self):
+        """Message should be added if user is not logged in."""
+        self.mock_request.user = AnonymousUser()
+        results = self._mock_decorator()
+
+        self.assertEqual(results, "hello")
+        self.assertEquals(len(self.messages), 1)
+        self.assertEquals(self.messages[0], DEFAULT_MESSAGE_TEXT)
+
+    def test_is_integrated(self):
+        """Decorator should have no effect if user is integrated."""
+        results = self._mock_decorator()
+
+        self.assertEquals(results, "hello")
+        self.assertEquals(len(self.messages), 0)
+
+    def test_is_not_integrated(self):
+        """Message should be added if user is not integrated."""
+        UserFitbit.objects.all().delete()
+        results = self._mock_decorator()
+
+        self.assertEquals(results, "hello")
+        self.assertEquals(len(self.messages), 1)
+        self.assertEquals(self.messages[0], DEFAULT_MESSAGE_TEXT)
+
+    def test_custom_msg(self):
+        """Decorator should support a custom message string."""
+        UserFitbit.objects.all().delete()
+        msg = "customized"
+        results = self._mock_decorator(msg)
+
+        self.assertEquals(results, "hello")
+        self.assertEquals(len(self.messages), 1)
+        self.assertEquals(self.messages[0], "customized")
+
+    def test_custom_msg_func(self):
+        """Decorator should support a custom message function."""
+        UserFitbit.objects.all().delete()
+        msg = lambda request: "message to {0}".format(request.user)
+        results = self._mock_decorator(msg)
+
+        self.assertEquals(results, "hello")
+        self.assertEquals(len(self.messages), 1)
+        self.assertEquals(self.messages[0], msg(self.mock_request))
 
 
 class TestLoginView(FitappTestBase):
@@ -41,10 +114,16 @@ class TestLoginView(FitappTestBase):
     def test_unintegrated(self):
         """Fitbit credentials not required to access Login view."""
         self.fbuser.delete()
-        fbuser = self.create_userfitbit(user=self.user)
         response = self._mock_client()
         self.assertRedirectsNoFollow(response, '/test')
         self.assertTrue('token' in self.client.session)
+        self.assertEquals(UserFitbit.objects.count(), 0)
+
+    def test_next(self):
+        response = self._mock_client(get_kwargs={'next': '/next'})
+        self.assertRedirectsNoFollow(response, '/test')
+        self.assertEquals(self.client.session.get('fitbit_next', None),
+                '/next')
         self.assertEquals(UserFitbit.objects.count(), 1)
 
 
@@ -67,14 +146,16 @@ class TestCompleteView(FitappTestBase):
         return super(TestCompleteView, self)._get(get_kwargs=get_kwargs,
                 **kwargs)
 
-    def _mock_client(self, **kwargs):
+    def _mock_client(self, client_kwargs=None, **kwargs):
+        client_kwargs = client_kwargs or {}
         defaults = {
             'key': self.key,
             'secret': self.secret,
             'user_id': self.user_id,
         }
-        defaults.update(kwargs)
-        return super(TestCompleteView, self)._mock_client(**defaults)
+        defaults.update(client_kwargs)
+        return super(TestCompleteView, self)._mock_client(
+                client_kwargs=defaults, **kwargs)
 
     def test_get(self):
         """Complete view should fetch & store user's access credentials."""
@@ -112,7 +193,7 @@ class TestCompleteView(FitappTestBase):
         Complete view should redirect to error if access token is
         inaccessible.
         """
-        response = self._mock_client(error=Exception)
+        response = self._mock_client(client_kwargs={'error': Exception})
         self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEquals(UserFitbit.objects.count(), 0)
 

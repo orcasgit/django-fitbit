@@ -5,7 +5,10 @@ from django.contrib import messages
 from . import utils
 
 
-def fitbit_required(msg="This page requires Fitbit integration."):
+DEFAULT_MESSAGE_TEXT = "This page requires Fitbit integration."
+
+
+def fitbit_required(msg=None):
     """
     Adds a message to inform the user about Fitbit integration if their
     account is not already integrated with Fitbit.
@@ -36,6 +39,8 @@ def fitbit_required(msg="This page requires Fitbit integration."):
             user = request.user
             if not utils.is_integrated(user):
                 text = msg(request) if callable(msg) else msg
+                if text is None:
+                    text = DEFAULT_MESSAGE_TEXT
                 messages.error(request, text)
             return view_func(request, *args, **kwargs)
         return wraps(view_func)(wrapped)
