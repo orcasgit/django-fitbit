@@ -28,7 +28,7 @@ def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
 
 
 def is_integrated(user):
-    """Returns True if we have Oauth info for the user.
+    """Returns ``True`` if we have Oauth info for the user.
 
     This does not currently require that the token and secret are valid.
 

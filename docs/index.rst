@@ -19,11 +19,11 @@ Contents:
    links
    releases
 
-Django-fitbit is a Django app for integrating a user's Fitbit data into your site.
+Django-fitbit is a Django app for integrating a user's Fitbit data into your
+site.
 
-It handles the details of getting your app authorized to access your user's Fitbit data via the Fitbit web API.
-
-
+It handles the details of getting your app authorized to access your user's
+Fitbit data via the Fitbit web API.
 
 Indices and tables
 ==================

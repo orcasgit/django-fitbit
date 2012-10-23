@@ -7,6 +7,7 @@ INPUT_FORMATS = ['%Y-%m-%d']
 
 
 class PeriodForm(forms.Form):
+    """Data necessary to request Fitbit data from a period of time."""
     base_date = forms.DateField(input_formats=INPUT_FORMATS, required=False)
     period = forms.ChoiceField(choices=[])
 
@@ -24,6 +25,7 @@ class PeriodForm(forms.Form):
 
 
 class RangeForm(forms.Form):
+    """Data necessary to request Fitbit data from a specific time range."""
     base_date = forms.DateField(input_formats=INPUT_FORMATS)
     end_date = forms.DateField(input_formats=INPUT_FORMATS)
 
