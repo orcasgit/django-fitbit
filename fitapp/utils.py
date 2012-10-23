@@ -34,7 +34,9 @@ def is_integrated(user):
 
     :param user: A Django User.
     """
-    return UserFitbit.objects.filter(user__id=user.id).exists()
+    if user.is_authenticated() and user.is_active:
+        return UserFitbit.objects.filter(user=user).exists()
+    return False
 
 
 def get_valid_periods():
