@@ -6,8 +6,6 @@ from . import views
 urlpatterns = patterns('',
 
     # OAuth authentication
-    url(r'^$',
-            views.fitbit, name='fitbit'),
     url(r'^login/$',
             views.login, name='fitbit-login'),
     url(r'^complete/$',

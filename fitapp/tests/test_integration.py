@@ -18,33 +18,6 @@ class TestIntegrationUtility(FitappTestBase):
         self.assertFalse(utils.is_integrated(self.user))
 
 
-class TestFitbitView(FitappTestBase):
-    url_name = 'fitbit'
-
-    def test_get(self):
-        """Should be able to retrieve Fitbit page."""
-        response = self._get()
-        self.assertEquals(response.status_code, 200)
-
-    def test_unintegrated(self):
-        """Fitbit credentials are not necessary to access Fitbit page."""
-        self.fbuser.delete()
-        response = self._get()
-        self.assertEquals(response.status_code, 200)
-
-    def test_unauthenticated(self):
-        """User must be logged in to access Fitbit view."""
-        self.client.logout()
-        response = self._get()
-        self.assertEquals(response.status_code, 302)
-
-    def test_next(self):
-        """Fitbit view should store GET['next'] in session['fitbit_next']."""
-        response = self._get(get_kwargs={'next': 'hello'})
-        self.assertEquals(response.status_code, 200)
-        self.assertEquals(self.client.session['fitbit_next'], 'hello')
-
-
 class TestLoginView(FitappTestBase):
     url_name = 'fitbit-login'
 
@@ -106,7 +79,8 @@ class TestCompleteView(FitappTestBase):
     def test_get(self):
         """Complete view should fetch & store user's access credentials."""
         response = self._mock_client()
-        self.assertRedirectsNoFollow(response, reverse('fitbit'))
+        self.assertRedirectsNoFollow(response,
+                utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         fbuser = UserFitbit.objects.get()
         self.assertEquals(fbuser.user, self.user)
         self.assertEquals(fbuser.auth_token, self.key)
@@ -168,7 +142,8 @@ class TestCompleteView(FitappTestBase):
         self.assertEquals(fbuser.auth_token, self.key)
         self.assertEquals(fbuser.auth_secret, self.secret)
         self.assertEquals(fbuser.fitbit_user, self.user_id)
-        self.assertRedirectsNoFollow(response, reverse('fitbit'))
+        self.assertRedirectsNoFollow(response,
+                utils.get_setting('FITAPP_LOGIN_REDIRECT'))
 
 
 class TestErrorView(FitappTestBase):
@@ -198,7 +173,8 @@ class TestLogoutView(FitappTestBase):
     def test_get(self):
         """Logout view should remove associated UserFitbit and redirect."""
         response = self._get()
-        self.assertRedirectsNoFollow(response, reverse('fitbit'))
+        self.assertRedirectsNoFollow(response,
+                utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         self.assertEquals(UserFitbit.objects.count(), 0)
 
     def test_unauthenticated(self):
@@ -212,7 +188,8 @@ class TestLogoutView(FitappTestBase):
         """No Fitbit credentials required to access Logout view."""
         self.fbuser.delete()
         response = self._get()
-        self.assertRedirectsNoFollow(response, reverse('fitbit'))
+        self.assertRedirectsNoFollow(response,
+                utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         self.assertEquals(UserFitbit.objects.count(), 0)
 
     def test_next(self):
