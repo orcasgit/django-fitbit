@@ -28,13 +28,15 @@ def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
 
 
 def is_integrated(user):
-    """Returns True if we have Oauth info for the user.
+    """Returns ``True`` if we have Oauth info for the user.
 
-    This does not currently require that the token and secret are valid.
+    This does not require that the token and secret are valid.
 
     :param user: A Django User.
     """
-    return UserFitbit.objects.filter(user=user).exists()
+    if user.is_authenticated() and user.is_active:
+        return UserFitbit.objects.filter(user=user).exists()
+    return False
 
 
 def get_valid_periods():

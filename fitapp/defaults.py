@@ -1,8 +1,22 @@
-# Your Fitbit access credentials, which must be requested from Fitbit,
-# should be specified in your project's settings.
-#FITAPP_CONSUMER_KEY = 'key'
-#FITAPP_CONSUMER_SECRET = 'secret'
+# Your Fitbit access credentials, which must be requested from Fitbit.
+# You must provide these in your project's settings.
+FITAPP_CONSUMER_KEY = None
+FITAPP_CONSUMER_SECRET = None
 
-FITAPP_INTEGRATION_TEMPLATE = 'fitapp/integration.html'
+# Where to redirect to after Fitbit authentication is successfully completed.
+FITAPP_LOGIN_REDIRECT = '/'
 
+# Where to redirect to after Fitbit authentication credentials have been
+# removed.
+FITAPP_LOGOUT_REDIRECT = '/'
+
+# The template to use when an unavoidable error occurs during Fitbit
+# integration.
 FITAPP_ERROR_TEMPLATE = 'fitapp/error.html'
+
+
+# The default message used by the fitbit_integration_warning decorator to
+# inform the user about Fitbit integration. If a callable is given, it is
+# called with the request as the only parameter to get the final value for the
+# message.
+FITAPP_DECORATOR_MESSAGE = 'This page requires Fitbit integration.'
