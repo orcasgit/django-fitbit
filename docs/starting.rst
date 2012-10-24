@@ -36,7 +36,7 @@ Getting started
    template behavior, use the :ref:`is_integrated_with_fitbit` template
    filter. Or in a view, call the :py:func:`fitapp.utils.is_integrated`
    function. You can also use the decorator
-   :py:func:`fitapp.decorators.fitbit_required` to display a message to the
+   :py:func:`fitapp.decorators.fitbit_integration_warning` to display a message to the
    user when they are not integrated with Fitbit.
 
 7. To send the user through authorization at the Fitbit site for your app to

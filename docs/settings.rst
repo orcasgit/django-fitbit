@@ -60,7 +60,7 @@ FITAPP_DECORATOR_MESSAGE
 
 :Default: ``'This page requires Fitbit integration.'``
 
-The default message used by the :py:func:`fitapp.decorators.fitbit_required`
-decorator to inform the user about Fitbit integration. If a callable is
-provided, it is called with the request as the only parameter to get the final
-value for the message.
+The default message used by the
+:py:func:`fitapp.decorators.fitbit_integration_warning` decorator to inform
+the user about Fitbit integration. If a callable is provided, it is called
+with the request as the only parameter to get the final value for the message.
