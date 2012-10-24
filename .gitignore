@@ -3,3 +3,5 @@
 dist
 django_fitbit.egg-info
 docs/_build/
+.coverage
+htmlcov/

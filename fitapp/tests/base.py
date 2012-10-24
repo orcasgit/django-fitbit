@@ -84,9 +84,9 @@ class FitappTestBase(TestCase):
         Workaround to test whether a response redirects to another URL without
         loading the page at that URL.
         """
-        self.assertEquals(response.status_code, status_code)
+        self.assertEqual(response.status_code, status_code)
         full_url = self.TEST_SERVER + url
-        self.assertEquals(response._headers['location'][1], full_url)
+        self.assertEqual(response._headers['location'][1], full_url)
 
 
     def _get(self, url_name=None, url_kwargs=None, get_kwargs=None, **kwargs):
@@ -110,9 +110,10 @@ class FitappTestBase(TestCase):
             pass
 
     @patch('fitbit.api.FitbitOauthClient')
-    def _mock_client(self, client=None, **kwargs):
-        client.return_value = MockClient(**kwargs)
-        return self._get()
+    def _mock_client(self, client=None, client_kwargs=None, **kwargs):
+        client_kwargs = client_kwargs or {}
+        client.return_value = MockClient(**client_kwargs)
+        return self._get(**kwargs)
 
     @patch('fitapp.utils.get_fitbit_steps')
     def _mock_utility(self, utility=None, error=None, response=None, **kwargs):

@@ -15,52 +15,27 @@ from .models import UserFitbit
 
 
 @login_required
-def fitbit(request):
-    """View the status of user's Fitbit Oauth credentials.
-
-    Uses the template from the setting :ref:`FITAPP_INTEGRATION_TEMPLATE`
-
-    URL name:
-        `fitbit`
-
-    Simple example::
-
-        {% load url from future %}
-        {% load fitbit %}
-
-        <html>
-            <head>
-                <title>Fitbit Integration</title>
-            </head>
-            <body>
-                {% if request.user|is_integrated_with_fitbit %}
-                    <p><a href="{% url 'fitbit-logout' %}">Remove Fitbit integration from this account</a></p>
-                {% else %}
-                    <p><a href="{% url 'fitbit-login' %}">Integrate your account with Fitbit</a></p>
-                {% endif %}
-            </body>
-        </html>
-
-    """
-    next_url = request.GET.get('next', None)
-    if next_url:
-        request.session['fitbit_next'] = next_url
-    return render(request, utils.get_setting('FITAPP_INTEGRATION_TEMPLATE'),
-            {})
-
-
-@login_required
 def login(request):
     """
-    Begin the OAuth authentication process by obtaining a Request Token from
+    Begins the OAuth authentication process by obtaining a Request Token from
     Fitbit and redirecting the user to the Fitbit site for authorization.
 
-    When the user has finished at the Fitbit site, they'll be redirected
+    When the user has finished at the Fitbit site, they will be redirected
     to the :py:func:`fitapp.views.complete` view.
+
+    If 'next' is provided in the GET data, it is saved in the session so the
+    :py:func:`fitapp.views.complete` view can redirect the user to that URL
+    upon successful authentication.
 
     URL name:
         `fitbit-login`
     """
+    next_url = request.GET.get('next', None)
+    if next_url:
+        request.session['fitbit_next'] = next_url
+    else:
+        request.session.pop('fitbit_next', None)
+
     fb = utils.create_fitbit()
     callback_url = request.build_absolute_uri(reverse('fitbit-complete'))
     parameters = {'oauth_callback': callback_url}
@@ -72,19 +47,20 @@ def login(request):
 
 @login_required
 def complete(request):
-    """The user is redirected here by Fitbit after the user grants us authorization.
+    """
+    After the user authorizes us, Fitbit sends a callback to this URL to
+    complete authentication.
 
     If there was an error, the user is redirected again to the `error` view.
 
-    If the authorization was successful, the credentials are stored for us to use
-    later, and the user is redirected.  If the user came here via the link displayed
-    by the :py:func:`fitapp.decorators.fitbit_required` decorator, then the user is redirected
-    to the view they were originally trying to get to.  Otherwise, they're redirected to the
-    :py:func:`fitapp.views.fitbit` view.
+    If the authorization was successful, the credentials are stored for us to
+    use later, and the user is redirected. If 'next_url' is in the request
+    session, the user is redirected to that URL. Otherwise, they are
+    redirected to the URL specified by the setting
+    :ref:`FITAPP_LOGIN_REDIRECT`.
 
     URL name:
         `fitbit-complete`
-
     """
     fb = utils.create_fitbit()
     try:
@@ -101,22 +77,18 @@ def complete(request):
     fbuser.auth_secret = access_token.secret
     fbuser.fitbit_user = fb.client.user_id
     fbuser.save()
-    next_url = request.session.pop('fitbit_next', None) or reverse('fitbit')
+    next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
+            'FITAPP_LOGIN_REDIRECT')
     return redirect(next_url)
 
 
 @login_required
 def error(request):
-    """The user is redirected to this view if there's an error acquiring their Fitbit credentials.
-
-    URL name:
-        `fitbit-error`
-
-    Uses the template from the setting :ref:`FITAPP_ERROR_TEMPLATE`.
-
-    The default template just tells them there was an error and offers a link to try again::
-
-        {% load url from future %}
+    """
+    The user is redirected to this view if we encounter an error acquiring
+    their Fitbit credentials. It renders the template defined in the setting
+    :ref:`FITAPP_ERROR_TEMPLATE`. The default template, located at
+    *fitapp/error.html*, simply informs the user of the error::
 
         <html>
             <head>
@@ -125,12 +97,13 @@ def error(request):
             <body>
                 <h1>Fitbit Authentication Error</h1>
 
-                <p>We encountered an error while attempting to authenticate you through Fitbit.</p>
-
-                <p><a href="{% url 'fitbit' %}">Retry Fitbit Authentication</a></p>
+                <p>We encontered an error while attempting to authenticate you
+                through Fitbit.</p>
             </body>
         </html>
 
+    URL name:
+        `fitbit-error`
     """
     return render(request, utils.get_setting('FITAPP_ERROR_TEMPLATE'), {})
 
@@ -140,13 +113,15 @@ def logout(request):
     """Forget this user's Fitbit credentials.
 
     If the request has a `next` parameter, the user is redirected to that URL.
-    Otherwise, they're redirected to the :py:func:`fitapp.views.fitbit` view.
+    Otherwise, they're redirected to the URL defined in the setting
+    :ref:`FITAPP_LOGOUT_REDIRECT`.
 
     URL name:
         `fitbit-logout`
     """
     UserFitbit.objects.filter(user=request.user).delete()
-    next_url = request.GET.get('next', None) or reverse('fitbit')
+    next_url = request.GET.get('next', None) or utils.get_setting(
+            'FITAPP_LOGOUT_REDIRECT')
     return redirect(next_url)
 
 
@@ -154,11 +129,9 @@ def logout(request):
 def get_steps(request):
     """An AJAX view that retrieves this user's steps data from Fitbit.
 
-    :param request: The HTTPRequest object. This view may only be retrieved
-        through a GET request.
-
-    The view can retrieve data from either a range of dates, with specific
-    start and end days, or from a time period ending on a specific date.
+    This view may only be retrieved through a GET request. The view can
+    retrieve data from either a range of dates, with specific start and end
+    days, or from a time period ending on a specific date.
 
     To retrieve a specific time period, two GET parameters are used:
 

@@ -1,37 +1,53 @@
+from functools import wraps
+
 from django.contrib import messages
-from django.core.urlresolvers import reverse
 
 from . import utils
 
 
-def fitbit_required(view_func):
+def fitbit_integration_warning(msg=None):
     """
     Adds a message to inform the user about Fitbit integration if their
     account is not already integrated with Fitbit.
 
-    The template(s) for any view with this decorator should display a user's
-    messages.
+    :param msg: The message text to use if the user is not integrated. If msg
+        is a callable, it is called with the request as the only parameter.
+        Otherwise, msg is passed in as the message text. If no message is
+        provided, the value in :ref:`FITAPP_DECORATOR_MESSAGE` is used.
 
-    The link displayed in the message will remember whatever view the user
-    was trying to get to, and return them there after they've authorized us.
+    This decorator does not prevent the user from seeing the view if they are
+    not integrated with Fitbit - it only adds a message to the user's
+    messages. If you would like to change the behavior of your view based on
+    whether the user is integrated, you can check the user's status by using
+    :py:func:`fitapp.utils.is_integrated`.
 
     Example::
 
-        from fitapp.decorators import fitbit_required
+        from django.http import HttpResponse
+        from django.contrib.auth.decorators import login_required
+        from fitapp.decorators import fitbit_integration_warning
 
-        @fitbit_required
+        @fitbit_integration_warning(msg="Integrate your account with Fitbit!")
+        @login_required
         def my_view(request):
-            ...
+            return HttpResponse('Visible to authenticated users regardless' +
+                    'of Fitbit integration status')
 
+    In this example, the ``fitbit_integration_warning`` decorator only
+    operates if the user is logged in. The view content is visible to all
+    users who are logged in, regardless of Fitbit integration status.
+
+    The template(s) for any view with this decorator should display a user's
+    messages.
     """
-    def wrapper(request, *args, **kwargs):
-        user = request.user
-        if not utils.is_integrated(user):
-            url = '{0}?next={1}'.format(reverse('fitbit'), request.path)
-            error_msg = 'Oh no! We can\'t display your physical activity ' \
-                    'data because your account isn\'t integrated with ' \
-                    'Fitbit. Please <a href=\'{0}\'>integrate your account' \
-                    '</a> in order to track your progress.'.format(url)
-            messages.error(request, error_msg)
-        return view_func(request, *args, **kwargs)
-    return wrapper
+    if not msg:
+        msg = utils.get_setting('FITAPP_DECORATOR_MESSAGE')
+    def inner_decorator(view_func):
+        def wrapped(request, *args, **kwargs):
+            user = request.user
+            if not utils.is_integrated(user):
+                text = msg(request) if callable(msg) else msg
+                messages.error(request, text)
+            return view_func(request, *args, **kwargs)
+        return wraps(view_func)(wrapped)
+    return inner_decorator
