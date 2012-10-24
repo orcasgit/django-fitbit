@@ -6,7 +6,7 @@ from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 
 from fitapp import utils
-from fitapp.decorators import fitbit_required, DEFAULT_MESSAGE_TEXT
+from fitapp.decorators import fitbit_integration_warning
 from fitapp.models import UserFitbit
 
 from .base import FitappTestBase
@@ -43,7 +43,8 @@ class TestIntegrationDecorator(FitappTestBase):
             self.messages.append(message)
 
         with mock.patch.object(messages, 'error', mock_error) as error:
-            return fitbit_required(msg=msg)(self.fake_view)(self.fake_request)
+            return fitbit_integration_warning(msg=msg)(self.fake_view)(
+                    self.fake_request)
 
     def test_unauthenticated(self):
         """Message should be added if user is not logged in."""
@@ -52,7 +53,8 @@ class TestIntegrationDecorator(FitappTestBase):
 
         self.assertEqual(results, "hello")
         self.assertEqual(len(self.messages), 1)
-        self.assertEqual(self.messages[0], DEFAULT_MESSAGE_TEXT)
+        self.assertEqual(self.messages[0],
+                utils.get_setting('FITAPP_DECORATOR_MESSAGE'))
 
     def test_is_integrated(self):
         """Decorator should have no effect if user is integrated."""
@@ -68,7 +70,8 @@ class TestIntegrationDecorator(FitappTestBase):
 
         self.assertEqual(results, "hello")
         self.assertEqual(len(self.messages), 1)
-        self.assertEqual(self.messages[0], DEFAULT_MESSAGE_TEXT)
+        self.assertEqual(self.messages[0],
+                utils.get_setting('FITAPP_DECORATOR_MESSAGE'))
 
     def test_custom_msg(self):
         """Decorator should support a custom message string."""

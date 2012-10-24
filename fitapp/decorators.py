@@ -23,6 +23,7 @@ def fitbit_integration_warning(msg=None):
 
     Example::
 
+        from django.http import HttpResponse
         from django.contrib.auth.decorators import login_required
         from fitapp.decorators import fitbit_integration_warning
 
