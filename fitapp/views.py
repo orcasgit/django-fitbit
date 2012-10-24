@@ -56,7 +56,8 @@ def complete(request):
     If the authorization was successful, the credentials are stored for us to
     use later, and the user is redirected. If 'next_url' is in the request
     session, the user is redirected to that URL. Otherwise, they are
-    redirected to the URL specified by the setting ``FITAPP_LOGIN_REDIRECT``.
+    redirected to the URL specified by the setting
+    :ref:`FITAPP_LOGIN_REDIRECT`.
 
     URL name:
         `fitbit-complete`

@@ -84,9 +84,9 @@ class FitappTestBase(TestCase):
         Workaround to test whether a response redirects to another URL without
         loading the page at that URL.
         """
-        self.assertEquals(response.status_code, status_code)
+        self.assertEqual(response.status_code, status_code)
         full_url = self.TEST_SERVER + url
-        self.assertEquals(response._headers['location'][1], full_url)
+        self.assertEqual(response._headers['location'][1], full_url)
 
 
     def _get(self, url_name=None, url_kwargs=None, get_kwargs=None, **kwargs):

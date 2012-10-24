@@ -70,7 +70,7 @@ class TestRetrievalUtility(FitappTestBase):
         """get_fitbit_steps should return a list of daily steps data."""
         response = {'activities-steps': [1,2,3]}
         steps = self._mock_time_series(response=response)
-        self.assertEquals(steps, response['activities-steps'])
+        self.assertEqual(steps, response['activities-steps'])
 
 
 class TestRetrievalViewBase(object):
@@ -86,19 +86,19 @@ class TestRetrievalViewBase(object):
 
     def _check_response(self, response, code, objects=None, error_msg=None):
         objects = objects or []
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
-        self.assertEquals(data['meta']['status_code'], code, error_msg)
-        self.assertEquals(data['meta']['total_count'], len(objects),
+        self.assertEqual(data['meta']['status_code'], code, error_msg)
+        self.assertEqual(data['meta']['total_count'], len(objects),
                 error_msg)
-        self.assertEquals(data['objects'], objects, error_msg)
+        self.assertEqual(data['objects'], objects, error_msg)
 
     def test_not_authenticated(self):
         """Status code should be 101 when user isn't logged in."""
         self.client.logout()
         response = self._get(get_kwargs=self._data())
         self._check_response(response, 101)
-        self.assertEquals(UserFitbit.objects.count(), 1)
+        self.assertEqual(UserFitbit.objects.count(), 1)
 
     def test_not_active(self):
         """Status code should be 101 when user isn't active."""
@@ -106,14 +106,14 @@ class TestRetrievalViewBase(object):
         self.user.save()
         response = self._get(get_kwargs=self._data())
         self._check_response(response, 101)
-        self.assertEquals(UserFitbit.objects.count(), 1)
+        self.assertEqual(UserFitbit.objects.count(), 1)
 
     def test_not_integrated(self):
         """Status code should be 102 when user is not integrated."""
         self.fbuser.delete()
         response = self._get(get_kwargs=self._data())
         self._check_response(response, 102)
-        self.assertEquals(UserFitbit.objects.count(), 0)
+        self.assertEqual(UserFitbit.objects.count(), 0)
 
     def test_invalid_credentials_unauthorized(self):
         """
@@ -123,7 +123,7 @@ class TestRetrievalViewBase(object):
         response = self._mock_utility(get_kwargs=self._data(),
                 error=fitbit_exceptions.HTTPUnauthorized)
         self._check_response(response, 103)
-        self.assertEquals(UserFitbit.objects.count(), 0)
+        self.assertEqual(UserFitbit.objects.count(), 0)
 
     def test_invalid_credentials_forbidden(self):
         """
@@ -133,7 +133,7 @@ class TestRetrievalViewBase(object):
         response = self._mock_utility(get_kwargs=self._data(),
                 error=fitbit_exceptions.HTTPForbidden)
         self._check_response(response, 103)
-        self.assertEquals(UserFitbit.objects.count(), 0)
+        self.assertEqual(UserFitbit.objects.count(), 0)
 
     def test_rate_limited(self):
         """Status code should be 105 when Fitbit rate limit is hit."""
@@ -153,7 +153,7 @@ class TestRetrievalViewBase(object):
         for method in (self.client.post, self.client.head,
                 self.client.options, self.client.put, self.client.delete):
             response = method(url)
-            self.assertEquals(response.status_code, 405)
+            self.assertEqual(response.status_code, 405)
 
     def test_ambiguous(self):
         """Status code should be 104 when both period & end_date are given."""
