@@ -11,9 +11,9 @@ Getting started
 .. index::
     single: INSTALLED_APPS
 
-2. Add `django-fitbit` to your INSTALLED_APPS setting::
+2. Add `fitapp` to your INSTALLED_APPS setting::
 
-    INSTALLED_APPS += ['django-fitbit']
+    INSTALLED_APPS += ['fitapp']
 
 3. Add the `django-fitbit` URLs to your URLconf::
 
