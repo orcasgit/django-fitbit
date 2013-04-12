@@ -73,13 +73,13 @@ class TestRetrievalUtility(FitappTestBase):
         self.assertEqual(steps, response['activities-steps'])
 
 
-class TestRetrievalViewBase(object):
+class RetrievalViewTestBase(object):
     """Base methods for the get_steps view."""
     url_name = 'fitbit-steps'
     valid_periods = utils.get_valid_periods()
 
     def setUp(self):
-        super(TestRetrievalViewBase, self).setUp()
+        super(RetrievalViewTestBase, self).setUp()
         self.period = '30d'
         self.base_date = '2012-06-06'
         self.end_date = '2012-07-07'
@@ -163,7 +163,7 @@ class TestRetrievalViewBase(object):
         self._check_response(response, 104)
 
 
-class TestRetrievePeriod(TestRetrievalViewBase, FitappTestBase):
+class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
 
     def _data(self):
         return {'base_date': self.base_date, 'period': self.period}
@@ -206,7 +206,7 @@ class TestRetrievePeriod(TestRetrievalViewBase, FitappTestBase):
             self._check_response(response, 100, steps, error_msg)
 
 
-class TestRetrieveRange(TestRetrievalViewBase, FitappTestBase):
+class TestRetrieveRange(RetrievalViewTestBase, FitappTestBase):
 
     def _data(self):
         return {'base_date': self.base_date, 'end_date': self.end_date}
