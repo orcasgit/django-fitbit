@@ -1,5 +1,8 @@
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
+
+from itertools import chain
 
 
 class UserFitbit(models.Model):
@@ -17,3 +20,85 @@ class UserFitbit(models.Model):
             'user_secret': self.auth_secret,
             'user_id': self.fitbit_user,
         }
+
+
+UNIT_TYPE_CHOICES = (
+    (0, 'duration'),
+    (1, 'distance'),
+    (2, 'elevation'),
+    (3, 'height'),
+    (4, 'weight'),
+    (5, 'measurements'),
+    (6, 'liquids'),
+    (7, 'blood glucose'),
+)
+
+class Unit(models.Model):
+    """
+    This model is intended to store Fitbit's data about unit systems, which
+    can be found here: https://wiki.fitbit.com/display/API/API+Unit+System
+    """
+
+    LOCALE_CHOICES = (
+        (0, 'en_US'),
+        (1, 'en_GB'),
+        (2, 'other'),
+    )
+    UNIT_NAME_CHOICES = (
+        (0, 'millisecond'),
+        (1, 'mile'),
+        (2, 'foot'),
+        (3, 'inch'),
+        (4, 'pound'),
+        (5, 'fl oz'),
+        (6, 'mg/dL'),
+        (7, 'kilometer'),
+        (8, 'meter'),
+        (9, 'centimeter'),
+        (10, 'stone'),
+        (11, 'milliliter'),
+        (12, 'mmol/l'),
+    )
+    locale = models.IntegerField(choices=LOCALE_CHOICES)
+    unit_type = models.IntegerField(choices=UNIT_TYPE_CHOICES)
+    unit_name = models.IntegerField(choices=UNIT_NAME_CHOICES)
+
+    class Meta:
+        unique_together = ('locale', 'unit_type',)
+
+
+class TimeSeriesDataType(models.Model):
+    """
+    This model is intended to store information about Fitbit's time series
+    resources, which can be found here:
+    https://wiki.fitbit.com/display/API/API-Get-Time-Series
+    """
+
+    CATEGORY_CHOICES = (
+        (0, 'foods'),
+        (1, 'activities'),
+        (2, 'sleep'),
+        (3, 'body'),
+    )
+    category = models.IntegerField(choices=CATEGORY_CHOICES)
+    resource = models.CharField(max_length=128)
+    unit_type = models.IntegerField(choices=UNIT_TYPE_CHOICES)
+
+    def category_label(self):
+        return dict(self.CATEGORY_CHOICES)[self.category]
+
+    def path(self):
+        return '/'.join([self.category_label, self.resource])
+
+
+class TimeSeriesData(models.Model):
+    """
+    The purpose of this model is to store Fitbit user data obtained from their
+    time series API (https://wiki.fitbit.com/display/API/API-Get-Time-Series).
+    """
+
+    user = models.ForeignKey(User)
+    resource_type = models.ForeignKey(TimeSeriesDataType)
+    date = models.DateField()
+    value = models.FloatField(null=True, default=None)
+    dirty = models.BooleanField(default=False)
