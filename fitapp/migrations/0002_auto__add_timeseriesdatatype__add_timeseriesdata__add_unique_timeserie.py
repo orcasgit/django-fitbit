@@ -13,7 +13,7 @@ class Migration(SchemaMigration):
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('category', self.gf('django.db.models.fields.IntegerField')()),
             ('resource', self.gf('django.db.models.fields.CharField')(max_length=128)),
-            ('unit_type', self.gf('django.db.models.fields.IntegerField')()),
+            ('unit_type', self.gf('django.db.models.fields.IntegerField')(null=True)),
         ))
         db.send_create_signal('fitapp', ['TimeSeriesDataType'])
 
@@ -27,6 +27,9 @@ class Migration(SchemaMigration):
             ('dirty', self.gf('django.db.models.fields.BooleanField')(default=False)),
         ))
         db.send_create_signal('fitapp', ['TimeSeriesData'])
+
+        # Adding unique constraint on 'TimeSeriesData', fields ['user', 'resource_type', 'date']
+        db.create_unique('fitapp_timeseriesdata', ['user_id', 'resource_type_id', 'date'])
 
         # Adding model 'Unit'
         db.create_table('fitapp_unit', (
@@ -44,6 +47,9 @@ class Migration(SchemaMigration):
     def backwards(self, orm):
         # Removing unique constraint on 'Unit', fields ['locale', 'unit_type']
         db.delete_unique('fitapp_unit', ['locale', 'unit_type'])
+
+        # Removing unique constraint on 'TimeSeriesData', fields ['user', 'resource_type', 'date']
+        db.delete_unique('fitapp_timeseriesdata', ['user_id', 'resource_type_id', 'date'])
 
         # Deleting model 'TimeSeriesDataType'
         db.delete_table('fitapp_timeseriesdatatype')
@@ -93,7 +99,7 @@ class Migration(SchemaMigration):
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
         'fitapp.timeseriesdata': {
-            'Meta': {'object_name': 'TimeSeriesData'},
+            'Meta': {'unique_together': "(('user', 'resource_type', 'date'),)", 'object_name': 'TimeSeriesData'},
             'date': ('django.db.models.fields.DateField', [], {}),
             'dirty': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
@@ -106,7 +112,7 @@ class Migration(SchemaMigration):
             'category': ('django.db.models.fields.IntegerField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'resource': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
-            'unit_type': ('django.db.models.fields.IntegerField', [], {})
+            'unit_type': ('django.db.models.fields.IntegerField', [], {'null': 'True'})
         },
         'fitapp.unit': {
             'Meta': {'unique_together': "(('locale', 'unit_type'),)", 'object_name': 'Unit'},

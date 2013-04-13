@@ -74,21 +74,22 @@ class TimeSeriesDataType(models.Model):
     https://wiki.fitbit.com/display/API/API-Get-Time-Series
     """
 
+    foods = 0
+    activities = 1
+    sleep = 2
+    body = 3
     CATEGORY_CHOICES = (
-        (0, 'foods'),
-        (1, 'activities'),
-        (2, 'sleep'),
-        (3, 'body'),
+        (foods, 'foods'),
+        (activities, 'activities'),
+        (sleep, 'sleep'),
+        (body, 'body'),
     )
     category = models.IntegerField(choices=CATEGORY_CHOICES)
     resource = models.CharField(max_length=128)
-    unit_type = models.IntegerField(choices=UNIT_TYPE_CHOICES)
-
-    def category_label(self):
-        return dict(self.CATEGORY_CHOICES)[self.category]
+    unit_type = models.IntegerField(choices=UNIT_TYPE_CHOICES, null=True)
 
     def path(self):
-        return '/'.join([self.category_label, self.resource])
+        return '/'.join([self.get_category_display(), self.resource])
 
 
 class TimeSeriesData(models.Model):
@@ -102,3 +103,6 @@ class TimeSeriesData(models.Model):
     date = models.DateField()
     value = models.FloatField(null=True, default=None)
     dirty = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('user', 'resource_type', 'date')
