@@ -1,17 +1,19 @@
 import json
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_POST
 
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPNotFound,
         HTTPConflict, HTTPServerError, HTTPBadRequest)
 
 from . import forms
 from . import utils
-from .models import UserFitbit, TimeSeriesDataType
+from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
 
 
 @login_required
@@ -82,7 +84,7 @@ def complete(request):
     fbuser.save()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         try:
-            SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')\
+            SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
             return redirect(reverse('fitbit-error'))
         fb.subscription(request.user.id, SUBSCRIBER_ID)
@@ -133,6 +135,42 @@ def logout(request):
     next_url = request.GET.get('next', None) or utils.get_setting(
             'FITAPP_LOGOUT_REDIRECT')
     return redirect(next_url)
+
+
+@csrf_exempt
+@require_POST
+def update(request):
+    """Receive notification from Fitbit.
+
+    Loop through the updates and mark the respective data as dirty.
+
+    URL name:
+        `fitbit-update`
+    """
+
+    # The updates come in as a json file in a form POST
+    if request.FILES:
+        try:
+            updates = json.loads(request.FILES['updates'].read())
+            for update in updates:
+                user_fitbit = UserFitbit.objects.get(
+                    user_id=update['subscriptionId'],
+                    fitbit_user=update['ownerId'])
+                cat = getattr(TimeSeriesDataType, update['collectionType'])
+                data, _ = TimeSeriesData.objects.get_or_create(
+                    user=user_fitbit.user, date=update['date'],
+                    resource_type=cat
+                )
+                data.dirty = True
+                data.save()
+
+        except:
+            return redirect(reverse('fitbit-error'))
+
+        return HttpResponse(status=204)
+
+    # if someone enters the url into the browser, raise a 404
+    raise Http404
 
 
 @require_GET

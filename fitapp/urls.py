@@ -15,6 +15,9 @@ urlpatterns = patterns('',
     url(r'^logout/$',
             views.logout, name='fitbit-logout'),
 
+    # Subscriber callback for near realtime updates
+    url(r'^update/$',
+            views.update, name='fitbit-update'),
 
     # Fitbit data retrieval
     url(r'^get_steps/$',
