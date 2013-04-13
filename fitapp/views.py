@@ -11,7 +11,7 @@ from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPNotFound,
 
 from . import forms
 from . import utils
-from .models import UserFitbit
+from .models import UserFitbit, TimeSeriesDataType
 
 
 @login_required
@@ -59,6 +59,9 @@ def complete(request):
     redirected to the URL specified by the setting
     :ref:`FITAPP_LOGIN_REDIRECT`.
 
+    If :ref:`FITAPP_SUBSCRIBE` is set to True, add a subscription to user
+    data at this time.
+
     URL name:
         `fitbit-complete`
     """
@@ -77,6 +80,13 @@ def complete(request):
     fbuser.auth_secret = access_token.secret
     fbuser.fitbit_user = fb.client.user_id
     fbuser.save()
+    if utils.get_setting('FITAPP_SUBSCRIBE'):
+        try:
+            SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')\
+        except ImproperlyConfigured:
+            return redirect(reverse('fitbit-error'))
+        fb.subscription(request.user.id, SUBSCRIBER_ID)
+
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
             'FITAPP_LOGIN_REDIRECT')
     return redirect(next_url)
