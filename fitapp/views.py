@@ -173,6 +173,16 @@ def update(request):
     raise Http404
 
 
+def make_response(code=None, objects=[]):
+    """AJAX helper method to generate a response"""
+
+    data = {
+        'meta': {'total_count': len(objects), 'status_code': code},
+        'objects': objects,
+    }
+    return HttpResponse(json.dumps(data))
+
+
 @require_GET
 def get_steps(request):
     """An AJAX view that retrieves this user's steps data from Fitbit.
@@ -229,13 +239,6 @@ def get_steps(request):
     URL name:
         `fitbit-steps`
     """
-    def make_response(code=None, steps=None):
-        steps = steps or []
-        data = {
-            'meta': {'total_count': len(steps), 'status_code': code},
-            'objects': steps,
-        }
-        return HttpResponse(json.dumps(data))
 
     # Manually check that user is logged in and integrated with Fitbit.
     user = request.user
