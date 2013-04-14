@@ -22,17 +22,6 @@ class UserFitbit(models.Model):
         }
 
 
-UNIT_TYPE_CHOICES = (
-    (0, 'duration'),
-    (1, 'distance'),
-    (2, 'elevation'),
-    (3, 'height'),
-    (4, 'weight'),
-    (5, 'measurements'),
-    (6, 'liquids'),
-    (7, 'blood glucose'),
-)
-
 class Unit(models.Model):
     """
     This model is intended to store Fitbit's data about unit systems, which
@@ -43,6 +32,16 @@ class Unit(models.Model):
         (0, 'en_US'),
         (1, 'en_GB'),
         (2, 'other'),
+    )
+    UNIT_TYPE_CHOICES = (
+        (0, 'duration'),
+        (1, 'distance'),
+        (2, 'elevation'),
+        (3, 'height'),
+        (4, 'weight'),
+        (5, 'measurements'),
+        (6, 'liquids'),
+        (7, 'blood glucose'),
     )
     UNIT_NAME_CHOICES = (
         (0, 'millisecond'),
@@ -86,7 +85,7 @@ class TimeSeriesDataType(models.Model):
     )
     category = models.IntegerField(choices=CATEGORY_CHOICES)
     resource = models.CharField(max_length=128)
-    unit_type = models.IntegerField(choices=UNIT_TYPE_CHOICES, null=True)
+    unit_type = models.IntegerField(choices=Unit.UNIT_TYPE_CHOICES, null=True)
 
     class Meta:
         unique_together = ('category', 'resource',)
