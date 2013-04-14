@@ -17,6 +17,9 @@ class Migration(SchemaMigration):
         ))
         db.send_create_signal('fitapp', ['TimeSeriesDataType'])
 
+        # Adding unique constraint on 'TimeSeriesDataType', fields ['category', 'resource']
+        db.create_unique('fitapp_timeseriesdatatype', ['category', 'resource'])
+
         # Adding model 'TimeSeriesData'
         db.create_table('fitapp_timeseriesdata', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
@@ -50,6 +53,9 @@ class Migration(SchemaMigration):
 
         # Removing unique constraint on 'TimeSeriesData', fields ['user', 'resource_type', 'date']
         db.delete_unique('fitapp_timeseriesdata', ['user_id', 'resource_type_id', 'date'])
+
+        # Removing unique constraint on 'TimeSeriesDataType', fields ['category', 'resource']
+        db.delete_unique('fitapp_timeseriesdatatype', ['category', 'resource'])
 
         # Deleting model 'TimeSeriesDataType'
         db.delete_table('fitapp_timeseriesdatatype')
@@ -108,7 +114,7 @@ class Migration(SchemaMigration):
             'value': ('django.db.models.fields.FloatField', [], {'default': 'None', 'null': 'True'})
         },
         'fitapp.timeseriesdatatype': {
-            'Meta': {'object_name': 'TimeSeriesDataType'},
+            'Meta': {'unique_together': "(('category', 'resource'),)", 'object_name': 'TimeSeriesDataType'},
             'category': ('django.db.models.fields.IntegerField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'resource': ('django.db.models.fields.CharField', [], {'max_length': '128'}),

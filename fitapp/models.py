@@ -88,6 +88,9 @@ class TimeSeriesDataType(models.Model):
     resource = models.CharField(max_length=128)
     unit_type = models.IntegerField(choices=UNIT_TYPE_CHOICES, null=True)
 
+    class Meta:
+        unique_together = ('category', 'resource',)
+
     def path(self):
         return '/'.join([self.get_category_display(), self.resource])
 
