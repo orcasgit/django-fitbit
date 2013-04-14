@@ -17,14 +17,11 @@ class Migration(SchemaMigration):
         ))
         db.send_create_signal('fitapp', ['TimeSeriesDataType'])
 
-        # Adding unique constraint on 'TimeSeriesDataType', fields ['category', 'resource']
-        db.create_unique('fitapp_timeseriesdatatype', ['category', 'resource'])
-
         # Adding model 'TimeSeriesData'
         db.create_table('fitapp_timeseriesdata', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
-            ('resource_type', self.gf('django.db.models.fields.IntegerField')()),
+            ('resource_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['fitapp.TimeSeriesDataType'])),
             ('date', self.gf('django.db.models.fields.DateField')()),
             ('value', self.gf('django.db.models.fields.FloatField')(default=None, null=True)),
             ('dirty', self.gf('django.db.models.fields.BooleanField')(default=False)),
@@ -32,7 +29,7 @@ class Migration(SchemaMigration):
         db.send_create_signal('fitapp', ['TimeSeriesData'])
 
         # Adding unique constraint on 'TimeSeriesData', fields ['user', 'resource_type', 'date']
-        db.create_unique('fitapp_timeseriesdata', ['user_id', 'resource_type', 'date'])
+        db.create_unique('fitapp_timeseriesdata', ['user_id', 'resource_type_id', 'date'])
 
         # Adding model 'Unit'
         db.create_table('fitapp_unit', (
@@ -52,10 +49,7 @@ class Migration(SchemaMigration):
         db.delete_unique('fitapp_unit', ['locale', 'unit_type'])
 
         # Removing unique constraint on 'TimeSeriesData', fields ['user', 'resource_type', 'date']
-        db.delete_unique('fitapp_timeseriesdata', ['user_id', 'resource_type', 'date'])
-
-        # Removing unique constraint on 'TimeSeriesDataType', fields ['category', 'resource']
-        db.delete_unique('fitapp_timeseriesdatatype', ['category', 'resource'])
+        db.delete_unique('fitapp_timeseriesdata', ['user_id', 'resource_type_id', 'date'])
 
         # Deleting model 'TimeSeriesDataType'
         db.delete_table('fitapp_timeseriesdatatype')
@@ -109,12 +103,12 @@ class Migration(SchemaMigration):
             'date': ('django.db.models.fields.DateField', [], {}),
             'dirty': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'resource_type': ('django.db.models.fields.IntegerField', [], {}),
+            'resource_type': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['fitapp.TimeSeriesDataType']"}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"}),
             'value': ('django.db.models.fields.FloatField', [], {'default': 'None', 'null': 'True'})
         },
         'fitapp.timeseriesdatatype': {
-            'Meta': {'unique_together': "(('category', 'resource'),)", 'object_name': 'TimeSeriesDataType'},
+            'Meta': {'object_name': 'TimeSeriesDataType'},
             'category': ('django.db.models.fields.IntegerField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'resource': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
