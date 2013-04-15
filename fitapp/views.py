@@ -2,7 +2,9 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.contrib.auth.signals import user_logged_in
 from django.core.urlresolvers import reverse
+from django.dispatch import receiver
 from django.http import HttpResponse, Http404
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -82,6 +84,8 @@ def complete(request):
     fbuser.auth_secret = access_token.secret
     fbuser.fitbit_user = fb.client.user_id
     fbuser.save()
+    # Add the Fitbit user info to the session
+    request.session['fitbit_profile'] = fb.user_profile_get()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         try:
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
@@ -92,6 +96,21 @@ def complete(request):
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
             'FITAPP_LOGIN_REDIRECT')
     return redirect(next_url)
+
+
+@receiver(user_logged_in)
+def create_fitbit_session(sender, request, user, **kwargs):
+    """ If the user is a fitbit user, update the profile in the session. """
+
+    if user.is_authenticated() and utils.is_integrated(user) and \
+            user.is_active:
+        fbuser = UserFitbit.objects.filter(user=user)
+        if fbuser.exists():
+            fb = utils.create_fitbit(**fbuser[0].get_user_data())
+            try:
+                request.session['fitbit_profile'] = fb.user_profile_get()
+            except:
+                pass
 
 
 @login_required
