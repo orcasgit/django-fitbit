@@ -108,3 +108,6 @@ class TimeSeriesData(models.Model):
 
     class Meta:
         unique_together = ('user', 'resource_type', 'date')
+
+    def string_date(self):
+        return self.date.strftime('%Y-%m-%d')
