@@ -152,17 +152,26 @@ def update(request):
     if request.FILES:
         try:
             updates = json.loads(request.FILES['updates'].read())
+            all_types = TimeSeriesDataType.objects.all()
+            # Use bulk updates and inserts to reduce queries.
             for update in updates:
                 user_fitbit = UserFitbit.objects.get(
                     user_id=update['subscriptionId'],
                     fitbit_user=update['ownerId'])
                 cat = getattr(TimeSeriesDataType, update['collectionType'])
-                data, _ = TimeSeriesData.objects.get_or_create(
-                    user=user_fitbit.user, date=update['date'],
-                    resource_type=cat
-                )
-                data.dirty = True
-                data.save()
+                cat_types = all_types.filter(category=cat)
+                kwargs = {'user': user_fitbit.user, 'date': update['date']}
+                # Update existing data
+                existing_data = TimeSeriesData.objects.filter(
+                    resource_type__in=cat_types, **kwargs)
+                existing_data.update(dirty=True)
+                # Create dirty records for non-existent data
+                existing_types = [ed.resource_type.pk for ed in existing_data]
+                new_res = cat_types.exclude(pk__in=existing_types)
+                TimeSeriesData.objects.bulk_create([
+                    TimeSeriesData(resource_type=res, dirty=True, **kwargs)
+                    for res in new_res
+                ])
 
         except:
             return redirect(reverse('fitbit-error'))
