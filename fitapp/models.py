@@ -31,7 +31,7 @@ class Unit(models.Model):
     LOCALE_CHOICES = (
         (0, 'en_US'),
         (1, 'en_GB'),
-        (2, 'other'),
+        (2, 'METRIC'),
     )
     UNIT_TYPE_CHOICES = (
         (0, 'duration'),
