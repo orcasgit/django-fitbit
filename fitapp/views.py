@@ -88,6 +88,8 @@ def complete(request):
     fbuser.auth_secret = access_token.secret
     fbuser.fitbit_user = fb.client.user_id
     fbuser.save()
+    # Add the Fitbit user info to the session
+    request.session['fitbit_profile'] = fb.user_profile_get()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         try:
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
