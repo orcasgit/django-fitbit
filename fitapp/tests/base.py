@@ -34,6 +34,12 @@ class MockClient(object):
         response.secret = self.secret
         return response
 
+    def make_request(self, *args, **kwargs):
+        response = Mock()
+        response.status_code = 204
+        response.content = "{}"
+        return response
+
 
 class FitappTestBase(TestCase):
     TEST_SERVER = 'http://testserver'
