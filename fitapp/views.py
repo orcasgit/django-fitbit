@@ -1,6 +1,8 @@
 import json
 
 from datetime import timedelta
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.signals import user_logged_in
@@ -245,6 +247,39 @@ def make_response(code=None, objects=[]):
     return HttpResponse(json.dumps(data))
 
 
+def normalize_date_range(fitbit_data):
+    """Prepare a fitbit date range for django database access. """
+
+    result = {}
+    base_date = fitbit_data['base_date']
+    if base_date == 'today':
+        now = timezone.now()
+        if 'fitbit_profile' in request.session.keys():
+            tz = request.session['fitbit_profile']['user']['timezone']
+            now = timezone.pytz.timezone(tz).normalize(timezone.now())
+        base_date = now.date().strftime('%Y-%m-%d')
+    result['date__gte'] = base_date
+
+    if 'end_date' in fitbit_data.keys():
+        result['date__lte'] = fitbit_data['end_date']
+    else:
+        period = fitbit_data['period']
+        if period != 'max':
+            start = parser.parse(base_date)
+            if 'y' in period:
+                kwargs = {'years': int(period.replace('y', ''))}
+            elif 'm' in period:
+                kwargs = {'months': int(period.replace('m', ''))}
+            elif 'w' in period:
+                kwargs = {'weeks': int(period.replace('w', ''))}
+            elif 'd' in period:
+                kwargs = {'days': int(period.replace('d', ''))}
+            end_date = start + relativedelta(**kwargs)
+            result['date__lte'] = end_date.strftime('%Y-%m-%d')
+
+    return result
+
+
 @require_GET
 def get_steps(request):
     """An AJAX view that retrieves this user's steps data from Fitbit.
@@ -304,9 +339,10 @@ def get_steps(request):
 
     # Manually check that user is logged in and integrated with Fitbit.
     user = request.user
+    fitapp_subscribe = utils.get_setting('FITAPP_SUBSCRIBE')
     if not user.is_authenticated() or not user.is_active:
         return make_response(101)
-    if not utils.is_integrated(user):
+    if not utils.is_integrated(user) and not fitapp_subscribe:
         return make_response(102)
 
     base_date = request.GET.get('base_date', None)
@@ -323,6 +359,20 @@ def get_steps(request):
     fitbit_data = form.get_fitbit_data()
     if not fitbit_data:
         return make_response(104)
+
+    if fitapp_subscribe:
+        # Get the data from the database first.
+        date_range = normalize_date_range(fitbit_data)
+        resource_type = TimeSeriesDataType.objects.get(
+            category=TimeSeriesDataType.activities, resource='steps')
+        existing_data = TimeSeriesData.objects.filter(
+            user=user, resource_type=resource_type, **date_range)
+        if not existing_data.filter(dirty=True).exists()\
+                or not utils.is_integrated(user):
+            # No dirty data, just return what we have
+            clean_data = [{'value': d.value, 'dateTime': d.string_date()}
+                          for d in existing_data]
+            return make_response(100, clean_data)
 
     # Request steps data through the API and handle related errors.
     fbuser = UserFitbit.objects.get(user=user)
@@ -341,5 +391,28 @@ def get_steps(request):
         # HTTPNotFound, and HTTPBadRequest. But they shouldn't occur, so we'll
         # send a 500 and check it out.
         raise
+
+    if fitapp_subscribe:
+        # If we are here then that means there was dirty data that needs to
+        # be updated.
+        kwargs = {'user': user, 'resource_type': resource_type}
+        kwargs.update(date_range)
+        existing_data = TimeSeriesData.objects.filter(**kwargs).values_list(
+            'date', 'resource_type', 'dirty')
+        new_data = []
+        for step in steps:
+            # Update existing dirty data or create new record
+            date = parser.parse(step['dateTime']).date()
+            if (date, resource_type.pk, True) in existing_data:
+                TimeSeriesData.objects.filter(date=date, **kwargs).update(
+                    value=step['value'], dirty=False)
+            elif (date, resource_type.pk, False) not in existing_data:
+                new_data.append(TimeSeriesData(
+                    user=user, date=date, value=step['value'],
+                    dirty=False, resource_type=resource_type))
+        TimeSeriesData.objects.bulk_create(new_data)
+        # Delete any local dirty data, that doesn't have corresponding data
+        # from Fitbit
+        TimeSeriesData.objects.filter(dirty=True, **kwargs).delete()
 
     return make_response(100, steps)
