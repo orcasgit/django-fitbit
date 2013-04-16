@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.signals import user_logged_in
+from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
 from django.dispatch import receiver
 from django.http import HttpResponse, Http404
@@ -172,7 +173,18 @@ def logout(request):
     URL name:
         `fitbit-logout`
     """
-    UserFitbit.objects.filter(user=request.user).delete()
+    user = request.user
+    fbuser = UserFitbit.objects.filter(user=user)
+    if utils.get_setting('FITAPP_SUBSCRIBE'):
+        try:
+            fb = utils.create_fitbit(**fbuser[0].get_user_data())
+            subs = fb.list_subscriptions()['apiSubscriptions']
+            if '%s' % user.id in [s['subscriptionId'] for s in subs]:
+                SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
+                fb.subscription(user.id, SUBSCRIBER_ID, method="DELETE")
+        except:
+            return redirect(reverse('fitbit-error'))
+    fbuser.delete()
     next_url = request.GET.get('next', None) or utils.get_setting(
             'FITAPP_LOGOUT_REDIRECT')
     return redirect(next_url)
