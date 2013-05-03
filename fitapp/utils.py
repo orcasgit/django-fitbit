@@ -44,7 +44,8 @@ def get_valid_periods():
     return ['1d', '7d', '30d', '1w', '1m', '3m', '6m', '1y', 'max']
 
 
-def get_fitbit_steps(fbuser, base_date=None, period=None, end_date=None):
+def get_fitbit_data(fbuser, resource_type, base_date=None, period=None,
+        end_date=None):
     """Creates a Fitbit API instance and retrieves step data for the period.
 
     Several exceptions may be thrown:
@@ -60,10 +61,10 @@ def get_fitbit_steps(fbuser, base_date=None, period=None, end_date=None):
         HTTPBadRequest   - >=400 - Bad request.
     """
     fb = create_fitbit(**fbuser.get_user_data())
-    data = fb.time_series('activities/steps', period=period,
-            base_date=base_date, end_date=end_date)
-    steps = data['activities-steps']
-    return steps
+    resource_path = resource_type.path()
+    data = fb.time_series(resource_path, period=period, base_date=base_date,
+                          end_date=end_date)
+    return data[resource_path.replace('/', '-')]
 
 
 def get_setting(name, use_defaults=True):

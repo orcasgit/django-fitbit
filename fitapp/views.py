@@ -179,6 +179,7 @@ def logout(request):
     fbuser = UserFitbit.objects.filter(user=user)
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         try:
+            import pdb; pdb.set_trace()
             fb = utils.create_fitbit(**fbuser[0].get_user_data())
             subs = fb.list_subscriptions()['apiSubscriptions']
             if '%s' % user.id in [s['subscriptionId'] for s in subs]:
@@ -282,11 +283,30 @@ def normalize_date_range(fitbit_data):
 
 @require_GET
 def get_steps(request):
-    """An AJAX view that retrieves this user's steps data from Fitbit.
+    """An AJAX view that retrieves this user's step data from Fitbit.
+    
+    This view has been deprecated. Use `get_data` instead.
+    
+    URL name:
+        `fitbit-steps`
+    """
+    
+    return get_data(request, 'activities', 'steps')
+
+
+@require_GET
+def get_data(request, category, resource):
+    """An AJAX view that retrieves this user's data from Fitbit.
 
     This view may only be retrieved through a GET request. The view can
     retrieve data from either a range of dates, with specific start and end
     days, or from a time period ending on a specific date.
+    
+    The two parameters, category and resource, determine which type of data
+    to retrieve. The category parameter can be one of: foods, activities,
+    sleep, and body. It's the first part of the path in the items listed at
+    https://wiki.fitbit.com/display/API/API-Get-Time-Series
+    The resource parameter should be the rest of the path.
 
     To retrieve a specific time period, two GET parameters are used:
 
@@ -304,12 +324,12 @@ def get_steps(request):
 
     The response body contains a JSON-encoded map with two items:
 
-        :objects: an ordered list (from oldest to newest) of daily steps data
+        :objects: an ordered list (from oldest to newest) of daily data
             for the requested period. Each day is of the format::
 
                {'dateTime': 'yyyy-mm-dd', 'value': 123}
 
-           where the user took *value* steps on *dateTime*.
+           where the user has *value* on *dateTime*.
         :meta: a map containing two things: the *total_count* of objects, and
             the *status_code* of the response.
 
@@ -318,7 +338,7 @@ def get_steps(request):
     with this call. For each type of error, we return an empty data list with
     a *status_code* to describe what went wrong on our end:
 
-        :100: OK - Response contains JSON steps data.
+        :100: OK - Response contains JSON data.
         :101: User is not logged in.
         :102: User is not integrated with Fitbit.
         :103: Fitbit authentication credentials are invalid and have been
@@ -334,11 +354,17 @@ def get_steps(request):
     <https://wiki.fitbit.com/display/API/API-Get-Time-Series>`_.
 
     URL name:
-        `fitbit-steps`
+        `fitbit-data`
     """
 
     # Manually check that user is logged in and integrated with Fitbit.
     user = request.user
+    try:
+        resource_type = TimeSeriesDataType.objects.get(
+            category=getattr(TimeSeriesDataType, category), resource=resource)
+    except:
+        return make_response(104)
+        
     fitapp_subscribe = utils.get_setting('FITAPP_SUBSCRIBE')
     if not user.is_authenticated() or not user.is_active:
         return make_response(101)
@@ -363,8 +389,6 @@ def get_steps(request):
     if fitapp_subscribe:
         # Get the data from the database first.
         date_range = normalize_date_range(fitbit_data)
-        resource_type = TimeSeriesDataType.objects.get(
-            category=TimeSeriesDataType.activities, resource='steps')
         existing_data = TimeSeriesData.objects.filter(
             user=user, resource_type=resource_type, **date_range)
         if not existing_data.filter(dirty=True).exists()\
@@ -374,10 +398,10 @@ def get_steps(request):
                           for d in existing_data]
             return make_response(100, clean_data)
 
-    # Request steps data through the API and handle related errors.
+    # Request data through the API and handle related errors.
     fbuser = UserFitbit.objects.get(user=user)
     try:
-        steps = utils.get_fitbit_steps(fbuser, **fitbit_data)
+        data = utils.get_fitbit_data(fbuser, resource_type, **fitbit_data)
     except (HTTPUnauthorized, HTTPForbidden):
         # Delete invalid credentials.
         fbuser.delete()
@@ -400,19 +424,19 @@ def get_steps(request):
         existing_data = TimeSeriesData.objects.filter(**kwargs).values_list(
             'date', 'resource_type', 'dirty')
         new_data = []
-        for step in steps:
+        for data_item in data:
             # Update existing dirty data or create new record
-            date = parser.parse(step['dateTime']).date()
+            date = parser.parse(data_item['dateTime']).date()
             if (date, resource_type.pk, True) in existing_data:
                 TimeSeriesData.objects.filter(date=date, **kwargs).update(
-                    value=step['value'], dirty=False)
+                    value=data_item['value'], dirty=False)
             elif (date, resource_type.pk, False) not in existing_data:
                 new_data.append(TimeSeriesData(
-                    user=user, date=date, value=step['value'],
+                    user=user, date=date, value=data_item['value'],
                     dirty=False, resource_type=resource_type))
         TimeSeriesData.objects.bulk_create(new_data)
         # Delete any local dirty data, that doesn't have corresponding data
         # from Fitbit
         TimeSeriesData.objects.filter(dirty=True, **kwargs).delete()
 
-    return make_response(100, steps)
+    return make_response(100, data)

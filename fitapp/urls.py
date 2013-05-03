@@ -20,6 +20,7 @@ urlpatterns = patterns('',
             views.update, name='fitbit-update'),
 
     # Fitbit data retrieval
-    url(r'^get_steps/$',
-            views.get_steps, name='fitbit-steps'),
+    url(r'^get_data/(?P<category>[\w]+)/(?P<resource>[/\w]+)/$',
+            views.get_data, name='fitbit-data'),
+    url(r'^get_steps/$', views.get_steps, name='fitbit-steps')
 )

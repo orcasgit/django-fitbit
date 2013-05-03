@@ -7,13 +7,13 @@ from fitbit import exceptions as fitbit_exceptions
 from fitbit.api import Fitbit
 
 from fitapp import utils
-from fitapp.models import UserFitbit
+from fitapp.models import UserFitbit, TimeSeriesDataType
 
 from .base import FitappTestBase
 
 
 class TestRetrievalUtility(FitappTestBase):
-    """Tests for the get_fitbit_steps utility function."""
+    """Tests for the get_fitbit_data utility function."""
 
     def setUp(self):
         super(TestRetrievalUtility, self).setUp()
@@ -27,8 +27,11 @@ class TestRetrievalUtility(FitappTestBase):
             time_series.side_effect = error('')
         elif response:
             time_series.return_value = response
-        return utils.get_fitbit_steps(self.fbuser, base_date=self.base_date,
-                period=self.period, end_date=self.end_date)
+        resource_type = TimeSeriesDataType.objects.get(
+            category=TimeSeriesDataType.activities, resource='steps')
+        return utils.get_fitbit_data(
+            self.fbuser, resource_type, base_date=self.base_date,
+            period=self.period, end_date=self.end_date)
 
     def _error_test(self, error):
         with self.assertRaises(error) as c:
@@ -67,7 +70,7 @@ class TestRetrievalUtility(FitappTestBase):
         self._error_test(fitbit_exceptions.HTTPBadRequest)
 
     def test_retrieval(self):
-        """get_fitbit_steps should return a list of daily steps data."""
+        """get_fitbit_data should return a list of daily steps data."""
         response = {'activities-steps': [1,2,3]}
         steps = self._mock_time_series(response=response)
         self.assertEqual(steps, response['activities-steps'])

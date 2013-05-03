@@ -121,7 +121,7 @@ class FitappTestBase(TestCase):
         client.return_value = MockClient(**client_kwargs)
         return self._get(**kwargs)
 
-    @patch('fitapp.utils.get_fitbit_steps')
+    @patch('fitapp.utils.get_fitbit_data')
     def _mock_utility(self, utility=None, error=None, response=None, **kwargs):
         if error:
             utility.side_effect = error('')
