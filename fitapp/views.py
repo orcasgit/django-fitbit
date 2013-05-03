@@ -90,29 +90,7 @@ def complete(request):
     fbuser.auth_secret = access_token.secret
     fbuser.fitbit_user = fb.client.user_id
     fbuser.save()
-    # Add the Fitbit user info to the session
-    request.session['fitbit_profile'] = fb.user_profile_get()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
-        # Create dirty data for all days the user has been using fitbit.com,
-        # user a bulk create lower query counts. This is only 3 queries
-        profile = request.session['fitbit_profile']
-        tz = timezone.pytz.timezone(profile['user']['timezone'])
-        start = parser.parse(profile['user']['memberSince']).date()
-        now = tz.normalize(timezone.now()).date()
-        current = start
-        increment = timedelta(days=1)
-        existing_data = TimeSeriesData.objects.filter(
-            user=request.user).values_list('date', 'resource_type')
-        resource_types = list(TimeSeriesDataType.objects.all())
-        new_data = []
-        while current <= now:
-            for resource_type in resource_types:
-                kwargs = {'user': request.user, 'date': current,
-                          'resource_type': resource_type}
-                if not (current, resource_type.pk) in existing_data:
-                    new_data.append(TimeSeriesData(dirty=True, **kwargs))
-            current = current + increment
-        TimeSeriesData.objects.bulk_create(new_data)
         try:
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
