@@ -4,7 +4,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "calories"
     }
   },
@@ -13,7 +12,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "caloriesBMR"
     }
   },
@@ -22,7 +20,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "steps"
     }
   },
@@ -31,7 +28,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": 1,
       "resource": "distance"
     }
   },
@@ -40,7 +36,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "floors"
     }
   },
@@ -49,7 +44,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": 2,
       "resource": "elevation"
     }
   },
@@ -58,7 +52,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "minutesSedentary"
     }
   },
@@ -67,7 +60,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "minutesLightlyActive"
     }
   },
@@ -76,7 +68,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "minutesFairlyActive"
     }
   },
@@ -85,7 +76,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "minutesVeryActive"
     }
   },
@@ -94,7 +84,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "activeScore"
     }
   },
@@ -103,7 +92,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "activityCalories"
     }
   },
@@ -112,7 +100,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/minutesSedentary"
     }
   },
@@ -121,7 +108,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/minutesLightlyActive"
     }
   },
@@ -130,7 +116,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/minutesFairlyActive"
     }
   },
@@ -139,7 +124,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/minutesVeryActive"
     }
   },
@@ -148,7 +132,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/activeScore"
     }
   },
@@ -157,7 +140,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/activityCalories"
     }
   },
@@ -166,7 +148,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/calories"
     }
   },
@@ -175,7 +156,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/steps"
     }
   },
@@ -184,7 +164,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": 1,
       "resource": "tracker/distance"
     }
   },
@@ -193,7 +172,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": null,
       "resource": "tracker/floors"
     }
   },
@@ -202,7 +180,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 1,
-      "unit_type": 2,
       "resource": "tracker/elevation"
     }
   },
@@ -211,7 +188,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 3,
-      "unit_type": 4,
       "resource": "weight"
     }
   },
@@ -220,7 +196,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 3,
-      "unit_type": null,
       "resource": "bmi"
     }
   },
@@ -229,7 +204,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 3,
-      "unit_type": null,
       "resource": "fat"
     }
   },
@@ -238,7 +212,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 2,
-      "unit_type": null,
       "resource": "startTime"
     }
   },
@@ -247,7 +220,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 2,
-      "unit_type": 0,
       "resource": "timeInBed"
     }
   },
@@ -256,7 +228,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 2,
-      "unit_type": null,
       "resource": "minutesAsleep"
     }
   },
@@ -265,7 +236,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 2,
-      "unit_type": null,
       "resource": "awakeningsCount"
     }
   },
@@ -274,7 +244,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 2,
-      "unit_type": null,
       "resource": "minutesAwake"
     }
   },
@@ -283,7 +252,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 2,
-      "unit_type": null,
       "resource": "minutesToFallAsleep"
     }
   },
@@ -292,7 +260,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 2,
-      "unit_type": null,
       "resource": "minutesAfterWakeup"
     }
   },
@@ -301,7 +268,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 2,
-      "unit_type": null,
       "resource": "efficiency"
     }
   },
@@ -310,7 +276,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 0,
-      "unit_type": null,
       "resource": "log/caloriesIn"
     }
   },
@@ -319,7 +284,6 @@
     "model": "fitapp.timeseriesdatatype",
     "fields": {
       "category": 0,
-      "unit_type": 6,
       "resource": "log/water"
     }
   }

@@ -1,19 +1,18 @@
-# -*- coding: utf-8 -*-
+# encoding: utf-8
 import datetime
 from south.db import db
 from south.v2 import SchemaMigration
 from django.db import models
 
-
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
+        
         # Adding model 'TimeSeriesDataType'
         db.create_table('fitapp_timeseriesdatatype', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('category', self.gf('django.db.models.fields.IntegerField')()),
             ('resource', self.gf('django.db.models.fields.CharField')(max_length=128)),
-            ('unit_type', self.gf('django.db.models.fields.IntegerField')(null=True)),
         ))
         db.send_create_signal('fitapp', ['TimeSeriesDataType'])
 
@@ -34,23 +33,9 @@ class Migration(SchemaMigration):
         # Adding unique constraint on 'TimeSeriesData', fields ['user', 'resource_type', 'date']
         db.create_unique('fitapp_timeseriesdata', ['user_id', 'resource_type_id', 'date'])
 
-        # Adding model 'Unit'
-        db.create_table('fitapp_unit', (
-            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('locale', self.gf('django.db.models.fields.IntegerField')()),
-            ('unit_type', self.gf('django.db.models.fields.IntegerField')()),
-            ('unit_name', self.gf('django.db.models.fields.IntegerField')()),
-        ))
-        db.send_create_signal('fitapp', ['Unit'])
-
-        # Adding unique constraint on 'Unit', fields ['locale', 'unit_type']
-        db.create_unique('fitapp_unit', ['locale', 'unit_type'])
-
 
     def backwards(self, orm):
-        # Removing unique constraint on 'Unit', fields ['locale', 'unit_type']
-        db.delete_unique('fitapp_unit', ['locale', 'unit_type'])
-
+        
         # Removing unique constraint on 'TimeSeriesData', fields ['user', 'resource_type', 'date']
         db.delete_unique('fitapp_timeseriesdata', ['user_id', 'resource_type_id', 'date'])
 
@@ -62,9 +47,6 @@ class Migration(SchemaMigration):
 
         # Deleting model 'TimeSeriesData'
         db.delete_table('fitapp_timeseriesdata')
-
-        # Deleting model 'Unit'
-        db.delete_table('fitapp_unit')
 
 
     models = {
@@ -83,7 +65,7 @@ class Migration(SchemaMigration):
         },
         'auth.user': {
             'Meta': {'object_name': 'User'},
-            'date_joined': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
+            'date_joined': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 3, 18, 46, 17, 183704, tzinfo=<UTC>)'}),
             'email': ('django.db.models.fields.EmailField', [], {'max_length': '75', 'blank': 'True'}),
             'first_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
             'groups': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['auth.Group']", 'symmetrical': 'False', 'blank': 'True'}),
@@ -91,7 +73,7 @@ class Migration(SchemaMigration):
             'is_active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'is_staff': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'is_superuser': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'last_login': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
+            'last_login': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 3, 18, 46, 17, 183619, tzinfo=<UTC>)'}),
             'last_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
             'password': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
             'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['auth.Permission']", 'symmetrical': 'False', 'blank': 'True'}),
@@ -117,15 +99,7 @@ class Migration(SchemaMigration):
             'Meta': {'unique_together': "(('category', 'resource'),)", 'object_name': 'TimeSeriesDataType'},
             'category': ('django.db.models.fields.IntegerField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'resource': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
-            'unit_type': ('django.db.models.fields.IntegerField', [], {'null': 'True'})
-        },
-        'fitapp.unit': {
-            'Meta': {'unique_together': "(('locale', 'unit_type'),)", 'object_name': 'Unit'},
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'locale': ('django.db.models.fields.IntegerField', [], {}),
-            'unit_name': ('django.db.models.fields.IntegerField', [], {}),
-            'unit_type': ('django.db.models.fields.IntegerField', [], {})
+            'resource': ('django.db.models.fields.CharField', [], {'max_length': '128'})
         },
         'fitapp.userfitbit': {
             'Meta': {'object_name': 'UserFitbit'},
