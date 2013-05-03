@@ -171,15 +171,6 @@
     }
   },
   {
-    "pk": 21,
-    "model": "fitapp.timeseriesdatatype",
-    "fields": {
-      "category": 1,
-      "unit_type": null,
-      "resource": "tracker/caloriesBMR"
-    }
-  },
-  {
     "pk": 22,
     "model": "fitapp.timeseriesdatatype",
     "fields": {
@@ -240,24 +231,6 @@
       "category": 3,
       "unit_type": null,
       "resource": "fat"
-    }
-  },
-  {
-    "pk": 29,
-    "model": "fitapp.timeseriesdatatype",
-    "fields": {
-      "category": 0,
-      "unit_type": null,
-      "resource": "caloriesIn"
-    }
-  },
-  {
-    "pk": 30,
-    "model": "fitapp.timeseriesdatatype",
-    "fields": {
-      "category": 0,
-      "unit_type": 6,
-      "resource": "water"
     }
   },
   {
@@ -330,6 +303,24 @@
       "category": 2,
       "unit_type": null,
       "resource": "efficiency"
+    }
+  },
+  {
+    "pk": 29,
+    "model": "fitapp.timeseriesdatatype",
+    "fields": {
+      "category": 0,
+      "unit_type": null,
+      "resource": "log/caloriesIn"
+    }
+  },
+  {
+    "pk": 30,
+    "model": "fitapp.timeseriesdatatype",
+    "fields": {
+      "category": 0,
+      "unit_type": 6,
+      "resource": "log/water"
     }
   }
 ]
