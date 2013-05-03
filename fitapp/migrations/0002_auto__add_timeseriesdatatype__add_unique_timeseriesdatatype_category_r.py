@@ -26,7 +26,6 @@ class Migration(SchemaMigration):
             ('resource_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['fitapp.TimeSeriesDataType'])),
             ('date', self.gf('django.db.models.fields.DateField')()),
             ('value', self.gf('django.db.models.fields.FloatField')(default=None, null=True)),
-            ('dirty', self.gf('django.db.models.fields.BooleanField')(default=False)),
         ))
         db.send_create_signal('fitapp', ['TimeSeriesData'])
 
@@ -65,7 +64,7 @@ class Migration(SchemaMigration):
         },
         'auth.user': {
             'Meta': {'object_name': 'User'},
-            'date_joined': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 3, 18, 46, 17, 183704, tzinfo=<UTC>)'}),
+            'date_joined': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 3, 18, 48, 26, 323422, tzinfo=<UTC>)'}),
             'email': ('django.db.models.fields.EmailField', [], {'max_length': '75', 'blank': 'True'}),
             'first_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
             'groups': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['auth.Group']", 'symmetrical': 'False', 'blank': 'True'}),
@@ -73,7 +72,7 @@ class Migration(SchemaMigration):
             'is_active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'is_staff': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'is_superuser': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'last_login': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 3, 18, 46, 17, 183619, tzinfo=<UTC>)'}),
+            'last_login': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 3, 18, 48, 26, 323338, tzinfo=<UTC>)'}),
             'last_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
             'password': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
             'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['auth.Permission']", 'symmetrical': 'False', 'blank': 'True'}),
@@ -89,7 +88,6 @@ class Migration(SchemaMigration):
         'fitapp.timeseriesdata': {
             'Meta': {'unique_together': "(('user', 'resource_type', 'date'),)", 'object_name': 'TimeSeriesData'},
             'date': ('django.db.models.fields.DateField', [], {}),
-            'dirty': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'resource_type': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['fitapp.TimeSeriesDataType']"}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"}),

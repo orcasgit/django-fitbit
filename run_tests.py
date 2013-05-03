@@ -18,6 +18,7 @@ if not settings.configured:
             'django.contrib.contenttypes',
             'django.contrib.messages',
             'django.contrib.sessions',
+            'djcelery',
             'fitapp',
         ],
         SECRET_KEY='something-secret',
@@ -25,6 +26,20 @@ if not settings.configured:
 
         FITAPP_CONSUMER_KEY='',
         FITAPP_CONSUMER_SECRET='',
+
+        LOGGING = {
+            'version': 1,
+            'handlers': {
+                'null': {
+                    'level': 'DEBUG',
+                    'class': 'django.utils.log.NullHandler',
+                },
+            },
+            'loggers': {
+                'fitapp.tasks': {'handlers': ['null'], 'level': 'DEBUG'},
+            },
+        },
+        TEST_RUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
     )
 
 

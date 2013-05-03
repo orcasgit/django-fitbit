@@ -52,10 +52,11 @@ FITAPP_SUBSCRIBE
 :Default: ``False``
 
 When this setting is True, we will subscribe to user data. Fitbit will
-send notifications when the data changes and we will mark our local data
-as dirty. When requests for fitbit data are made to fitapp, we will always
-pull the data from our own database instead of getting it directly from
-Fitbit. Of course, if our data is dirty we will update it first.
+send notifications when the data changes and we will queue tasks to get
+the updated data. When requests for fitbit data are made to fitapp, we
+will always pull the latest data from our own database instead of getting
+it directly from Fitbit. To use this feature, you will need to setup a
+celery worker to handle the tasks.
 
 .. _FITAPP_SUBSCRIBER_ID:
 

@@ -21,6 +21,7 @@ from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPNotFound,
 from . import forms
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
+from .tasks import update_fitbit_data_task
 
 
 @login_required
@@ -179,7 +180,6 @@ def logout(request):
     fbuser = UserFitbit.objects.filter(user=user)
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         try:
-            import pdb; pdb.set_trace()
             fb = utils.create_fitbit(**fbuser[0].get_user_data())
             subs = fb.list_subscriptions()['apiSubscriptions']
             if '%s' % user.id in [s['subscriptionId'] for s in subs]:
@@ -198,7 +198,9 @@ def logout(request):
 def update(request):
     """Receive notification from Fitbit.
 
-    Loop through the updates and mark the respective data as dirty.
+    Loop through the updates and create celery tasks to get the data.
+    More information here:
+    https://wiki.fitbit.com/display/API/Fitbit+Subscriptions+API
 
     URL name:
         `fitbit-update`
@@ -209,26 +211,16 @@ def update(request):
         try:
             updates = json.loads(request.FILES['updates'].read())
             all_types = TimeSeriesDataType.objects.all()
-            # Use bulk updates and inserts to reduce queries.
+            # Create a celery task for each update
             for update in updates:
+                # Each update in a given notification can be for a different
+                # user.
                 user_fitbit = UserFitbit.objects.get(
-                    user_id=update['subscriptionId'],
+                    user__id=update['subscriptionId'],
                     fitbit_user=update['ownerId'])
                 cat = getattr(TimeSeriesDataType, update['collectionType'])
-                cat_types = all_types.filter(category=cat)
-                kwargs = {'user': user_fitbit.user, 'date': update['date']}
-                # Update existing data
-                existing_data = TimeSeriesData.objects.filter(
-                    resource_type__in=cat_types, **kwargs)
-                existing_data.update(dirty=True)
-                # Create dirty records for non-existent data
-                existing_types = [ed.resource_type.pk for ed in existing_data]
-                new_res = cat_types.exclude(pk__in=existing_types)
-                TimeSeriesData.objects.bulk_create([
-                    TimeSeriesData(resource_type=res, dirty=True, **kwargs)
-                    for res in new_res
-                ])
-
+                update_fitbit_data_task.delay(
+                    user_fitbit, cat, update['date'])
         except:
             return redirect(reverse('fitbit-error'))
 
@@ -284,13 +276,13 @@ def normalize_date_range(fitbit_data):
 @require_GET
 def get_steps(request):
     """An AJAX view that retrieves this user's step data from Fitbit.
-    
+
     This view has been deprecated. Use `get_data` instead.
-    
+
     URL name:
         `fitbit-steps`
     """
-    
+
     return get_data(request, 'activities', 'steps')
 
 
@@ -301,7 +293,7 @@ def get_data(request, category, resource):
     This view may only be retrieved through a GET request. The view can
     retrieve data from either a range of dates, with specific start and end
     days, or from a time period ending on a specific date.
-    
+
     The two parameters, category and resource, determine which type of data
     to retrieve. The category parameter can be one of: foods, activities,
     sleep, and body. It's the first part of the path in the items listed at
@@ -364,7 +356,7 @@ def get_data(request, category, resource):
             category=getattr(TimeSeriesDataType, category), resource=resource)
     except:
         return make_response(104)
-        
+
     fitapp_subscribe = utils.get_setting('FITAPP_SUBSCRIBE')
     if not user.is_authenticated() or not user.is_active:
         return make_response(101)
@@ -387,16 +379,13 @@ def get_data(request, category, resource):
         return make_response(104)
 
     if fitapp_subscribe:
-        # Get the data from the database first.
+        # Get the data directly from the database.
         date_range = normalize_date_range(fitbit_data)
         existing_data = TimeSeriesData.objects.filter(
             user=user, resource_type=resource_type, **date_range)
-        if not existing_data.filter(dirty=True).exists()\
-                or not utils.is_integrated(user):
-            # No dirty data, just return what we have
-            clean_data = [{'value': d.value, 'dateTime': d.string_date()}
-                          for d in existing_data]
-            return make_response(100, clean_data)
+        simplified_data = [{'value': d.value, 'dateTime': d.string_date()}
+                           for d in existing_data]
+        return make_response(100, simplified_data)
 
     # Request data through the API and handle related errors.
     fbuser = UserFitbit.objects.get(user=user)
@@ -415,28 +404,5 @@ def get_data(request, category, resource):
         # HTTPNotFound, and HTTPBadRequest. But they shouldn't occur, so we'll
         # send a 500 and check it out.
         raise
-
-    if fitapp_subscribe:
-        # If we are here then that means there was dirty data that needs to
-        # be updated.
-        kwargs = {'user': user, 'resource_type': resource_type}
-        kwargs.update(date_range)
-        existing_data = TimeSeriesData.objects.filter(**kwargs).values_list(
-            'date', 'resource_type', 'dirty')
-        new_data = []
-        for data_item in data:
-            # Update existing dirty data or create new record
-            date = parser.parse(data_item['dateTime']).date()
-            if (date, resource_type.pk, True) in existing_data:
-                TimeSeriesData.objects.filter(date=date, **kwargs).update(
-                    value=data_item['value'], dirty=False)
-            elif (date, resource_type.pk, False) not in existing_data:
-                new_data.append(TimeSeriesData(
-                    user=user, date=date, value=data_item['value'],
-                    dirty=False, resource_type=resource_type))
-        TimeSeriesData.objects.bulk_create(new_data)
-        # Delete any local dirty data, that doesn't have corresponding data
-        # from Fitbit
-        TimeSeriesData.objects.filter(dirty=True, **kwargs).delete()
 
     return make_response(100, data)

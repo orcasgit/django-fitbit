@@ -1,13 +1,17 @@
 import json
-from mock import patch
+import StringIO
 
+from dateutil import parser
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.urlresolvers import reverse
+from django.test.utils import override_settings
+from mock import patch
 
 from fitbit import exceptions as fitbit_exceptions
 from fitbit.api import Fitbit
 
 from fitapp import utils
-from fitapp.models import UserFitbit, TimeSeriesDataType
+from fitapp.models import UserFitbit, TimeSeriesData, TimeSeriesDataType
 
 from .base import FitappTestBase
 
@@ -74,6 +78,45 @@ class TestRetrievalUtility(FitappTestBase):
         response = {'activities-steps': [1,2,3]}
         steps = self._mock_time_series(response=response)
         self.assertEqual(steps, response['activities-steps'])
+
+
+class TestRetrievalTask(FitappTestBase):
+    def setUp(self):
+        super(TestRetrievalTask, self).setUp()
+        self.category = 'activities'
+        self.date = '2013-05-02'
+        self.value = 10
+
+    def _receive_fitbit_updates(self):
+        updates_obj = [{
+            'subscriptionId': self.user.id,
+            'ownerId': self.fbuser.fitbit_user,
+            'collectionType': self.category,
+            'date': self.date
+        }]
+        # Create an in memory file object to use for the POST
+        updates_stringio = StringIO.StringIO(json.dumps(updates_obj))
+        updates = InMemoryUploadedFile(updates_stringio, None, 'updates',
+                                       'text', updates_stringio.len, None)
+        res = self.client.post(reverse('fitbit-update'), {'updates': updates})
+        assert res.status_code, 204
+
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update(self, get_fitbit_data):
+        get_fitbit_data.return_value = [{'value': self.value}]
+        category = getattr(TimeSeriesDataType, self.category)
+        resources = TimeSeriesDataType.objects.filter(category=category)
+        self._receive_fitbit_updates()
+        assert get_fitbit_data.call_count, resources.count()
+        date = parser.parse(self.date)
+        for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
+            assert tsd.value, self.value
+
+    @patch('fitapp.tasks.update_fitbit_data_task')
+    def test_problem_queueing_task(self, update_fitbit_data_task):
+        # If queueing the task raises an exception, it doesn't propagate
+        update_fitbit_data_task.delay.side_effect = Exception
+        self._receive_fitbit_updates()
 
 
 class RetrievalViewTestBase(object):
@@ -152,7 +195,7 @@ class RetrievalViewTestBase(object):
 
     def test_405(self):
         """View should not respond to anything but a GET request."""
-        url = reverse('fitbit-steps')
+        url = reverse('fitbit-data', args=['activities', 'steps'])
         for method in (self.client.post, self.client.head,
                 self.client.options, self.client.put, self.client.delete):
             response = method(url)

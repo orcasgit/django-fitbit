@@ -10,6 +10,11 @@ FITAPP_LOGIN_REDIRECT = '/'
 # removed.
 FITAPP_LOGOUT_REDIRECT = '/'
 
+# Celery settings
+FITAPP_QUEUE = "fitapp_get_data"
+CELERY_ROUTES = {'fitapp.tasks.update_fitbit_data_task':
+                 {'queue': FITAPP_QUEUE}}
+
 # By default, don't subscribe to user data. Set this to true to subscribe.
 FITAPP_SUBSCRIBE = False
 

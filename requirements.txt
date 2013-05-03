@@ -1,1 +1,2 @@
 fitbit==0.0.2
+django-celery==3.0.17
