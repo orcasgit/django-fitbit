@@ -337,7 +337,7 @@ def get_data(request, category, resource):
     fitapp_subscribe = utils.get_setting('FITAPP_SUBSCRIBE')
     if not user.is_authenticated() or not user.is_active:
         return make_response(101)
-    if not utils.is_integrated(user) and not fitapp_subscribe:
+    if not utils.is_integrated(user):
         return make_response(102)
 
     base_date = request.GET.get('base_date', None)
