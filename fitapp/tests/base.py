@@ -48,7 +48,7 @@ class FitappTestBase(TestCase):
         self.username = self.random_string(25)
         self.password = self.random_string(25)
         self.user = self.create_user(username=self.username,
-                password=self.password)
+                                     password=self.password)
         self.fbuser = self.create_userfitbit(user=self.user)
 
         self.client.login(username=self.username, password=self.password)
@@ -60,7 +60,7 @@ class FitappTestBase(TestCase):
     def create_user(self, username=None, email=None, password=None, **kwargs):
         username = username or self.random_string(25)
         email = email or '{0}@{1}.com'.format(self.random_string(25),
-                self.random_string(10))
+                                              self.random_string(10))
         password = password or self.random_string(25)
         user = User.objects.create_user(username, email, password)
         User.objects.filter(pk=user.pk).update(**kwargs)
@@ -93,7 +93,6 @@ class FitappTestBase(TestCase):
         self.assertEqual(response.status_code, status_code)
         full_url = self.TEST_SERVER + url
         self.assertEqual(response._headers['location'][1], full_url)
-
 
     def _get(self, url_name=None, url_kwargs=None, get_kwargs=None, **kwargs):
         """Convenience wrapper for test client GET request."""

@@ -9,6 +9,7 @@ from .models import TimeSeriesData, TimeSeriesDataType
 
 logger = logging.getLogger(__name__)
 
+
 @task
 def update_fitbit_data_task(fitbit_user, category, date):
     logger.debug("FITAPP DATA TASK")

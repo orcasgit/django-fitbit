@@ -4,7 +4,6 @@ import StringIO
 from dateutil import parser
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.urlresolvers import reverse
-from django.test.utils import override_settings
 from mock import patch
 
 from fitbit import exceptions as fitbit_exceptions
@@ -38,7 +37,7 @@ class TestRetrievalUtility(FitappTestBase):
             period=self.period, end_date=self.end_date)
 
     def _error_test(self, error):
-        with self.assertRaises(error) as c:
+        with self.assertRaises(error):
             self._mock_time_series(error=error)
 
     def test_value_error(self):
@@ -75,7 +74,7 @@ class TestRetrievalUtility(FitappTestBase):
 
     def test_retrieval(self):
         """get_fitbit_data should return a list of daily steps data."""
-        response = {'activities-steps': [1,2,3]}
+        response = {'activities-steps': [1, 2, 3]}
         steps = self._mock_time_series(response=response)
         self.assertEqual(steps, response['activities-steps'])
 
@@ -103,6 +102,8 @@ class TestRetrievalTask(FitappTestBase):
 
     @patch('fitapp.utils.get_fitbit_data')
     def test_subscription_update(self, get_fitbit_data):
+        # Check that celery tasks get made when a notification is received
+        # from Fitbit.
         get_fitbit_data.return_value = [{'value': self.value}]
         category = getattr(TimeSeriesDataType, self.category)
         resources = TimeSeriesDataType.objects.filter(category=category)
@@ -136,7 +137,7 @@ class RetrievalViewTestBase(object):
         data = json.loads(response.content)
         self.assertEqual(data['meta']['status_code'], code, error_msg)
         self.assertEqual(data['meta']['total_count'], len(objects),
-                error_msg)
+                         error_msg)
         self.assertEqual(data['objects'], objects, error_msg)
 
     def test_not_authenticated(self):
@@ -167,7 +168,7 @@ class RetrievalViewTestBase(object):
         integration is invalid.
         """
         response = self._mock_utility(get_kwargs=self._data(),
-                error=fitbit_exceptions.HTTPUnauthorized)
+                                      error=fitbit_exceptions.HTTPUnauthorized)
         self._check_response(response, 103)
         self.assertEqual(UserFitbit.objects.count(), 0)
 
@@ -177,27 +178,28 @@ class RetrievalViewTestBase(object):
         integration is invalid.
         """
         response = self._mock_utility(get_kwargs=self._data(),
-                error=fitbit_exceptions.HTTPForbidden)
+                                      error=fitbit_exceptions.HTTPForbidden)
         self._check_response(response, 103)
         self.assertEqual(UserFitbit.objects.count(), 0)
 
     def test_rate_limited(self):
         """Status code should be 105 when Fitbit rate limit is hit."""
         response = self._mock_utility(get_kwargs=self._data(),
-                error=fitbit_exceptions.HTTPConflict)
+                                      error=fitbit_exceptions.HTTPConflict)
         self._check_response(response, 105)
 
     def test_fitbit_error(self):
         """Status code should be 106 when Fitbit server error occurs."""
         response = self._mock_utility(get_kwargs=self._data(),
-                error=fitbit_exceptions.HTTPServerError)
+                                      error=fitbit_exceptions.HTTPServerError)
         self._check_response(response, 106)
 
     def test_405(self):
         """View should not respond to anything but a GET request."""
         url = reverse('fitbit-data', args=['activities', 'steps'])
         for method in (self.client.post, self.client.head,
-                self.client.options, self.client.put, self.client.delete):
+                       self.client.options, self.client.put,
+                       self.client.delete):
             response = method(url)
             self.assertEqual(response.status_code, 405)
 
@@ -248,7 +250,7 @@ class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
             data = self._data()
             response = self._mock_utility(response=steps, get_kwargs=data)
             error_msg = 'Should be able to retrieve data for {0}.'.format(
-                    self.period)
+                self.period)
             self._check_response(response, 100, steps, error_msg)
 
 
@@ -286,5 +288,5 @@ class TestRetrieveRange(RetrievalViewTestBase, FitappTestBase):
     def test_range(self):
         steps = [{'dateTime': '2000-01-01', 'value': 10}]
         response = self._mock_utility(response=steps,
-                get_kwargs = self._data())
+                                      get_kwargs=self._data())
         self._check_response(response, 100, steps)
