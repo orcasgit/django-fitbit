@@ -217,7 +217,7 @@ def make_response(code=None, objects=[]):
     return HttpResponse(json.dumps(data))
 
 
-def normalize_date_range(fitbit_data):
+def normalize_date_range(request, fitbit_data):
     """Prepare a fitbit date range for django database access. """
 
     result = {}
@@ -357,7 +357,7 @@ def get_data(request, category, resource):
 
     if fitapp_subscribe:
         # Get the data directly from the database.
-        date_range = normalize_date_range(fitbit_data)
+        date_range = normalize_date_range(request, fitbit_data)
         existing_data = TimeSeriesData.objects.filter(
             user=user, resource_type=resource_type, **date_range)
         simplified_data = [{'value': d.value, 'dateTime': d.string_date()}
