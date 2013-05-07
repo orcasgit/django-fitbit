@@ -95,7 +95,7 @@ def complete(request):
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
             return redirect(reverse('fitbit-error'))
-        fb.subscription(request.user.id, SUBSCRIBER_ID)
+        fb.subscription(fbuser.fitbit_user, SUBSCRIBER_ID)
 
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
         'FITAPP_LOGIN_REDIRECT')
@@ -160,9 +160,10 @@ def logout(request):
         try:
             fb = utils.create_fitbit(**fbuser[0].get_user_data())
             subs = fb.list_subscriptions()['apiSubscriptions']
-            if '%s' % user.id in [s['subscriptionId'] for s in subs]:
+            if fbuser[0].fitbit_user in [s['subscriptionId'] for s in subs]:
                 SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
-                fb.subscription(user.id, SUBSCRIBER_ID, method="DELETE")
+                fb.subscription(fbuser[0].fitbit_user, SUBSCRIBER_ID,
+                                method="DELETE")
         except:
             return redirect(reverse('fitbit-error'))
     fbuser.delete()
@@ -190,14 +191,9 @@ def update(request):
             updates = json.loads(request.FILES['updates'].read())
             # Create a celery task for each update
             for update in updates:
-                # Each update in a given notification can be for a different
-                # user.
-                user_fitbit = UserFitbit.objects.get(
-                    user__id=update['subscriptionId'],
-                    fitbit_user=update['ownerId'])
                 cat = getattr(TimeSeriesDataType, update['collectionType'])
                 update_fitbit_data_task.delay(
-                    user_fitbit, cat, update['date'])
+                    update['ownerId'], cat, update['date'])
         except:
             return redirect(reverse('fitbit-error'))
 

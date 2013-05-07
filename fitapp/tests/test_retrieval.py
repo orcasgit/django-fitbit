@@ -88,7 +88,7 @@ class TestRetrievalTask(FitappTestBase):
 
     def _receive_fitbit_updates(self):
         updates_obj = [{
-            'subscriptionId': self.user.id,
+            'subscriptionId': self.fbuser.fitbit_user,
             'ownerId': self.fbuser.fitbit_user,
             'collectionType': self.category,
             'date': self.date
