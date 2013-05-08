@@ -55,7 +55,7 @@ class TimeSeriesData(models.Model):
     user = models.ForeignKey(User)
     resource_type = models.ForeignKey(TimeSeriesDataType)
     date = models.DateField()
-    value = models.FloatField(null=True, default=None)
+    value = models.CharField(null=True, default=None, max_length=5)
 
     class Meta:
         unique_together = ('user', 'resource_type', 'date')
