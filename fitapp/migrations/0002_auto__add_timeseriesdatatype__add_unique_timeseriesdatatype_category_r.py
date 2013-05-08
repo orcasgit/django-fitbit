@@ -25,7 +25,7 @@ class Migration(SchemaMigration):
             ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
             ('resource_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['fitapp.TimeSeriesDataType'])),
             ('date', self.gf('django.db.models.fields.DateField')()),
-            ('value', self.gf('django.db.models.fields.CharField')(default=None, max_length=5, null=True)),
+            ('value', self.gf('django.db.models.fields.CharField')(default=None, max_length=16, null=True)),
         ))
         db.send_create_signal('fitapp', ['TimeSeriesData'])
 
@@ -90,7 +90,7 @@ class Migration(SchemaMigration):
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'resource_type': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['fitapp.TimeSeriesDataType']"}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"}),
-            'value': ('django.db.models.fields.CharField', [], {'default': 'None', 'max_length': '5', 'null': 'True'})
+            'value': ('django.db.models.fields.CharField', [], {'default': 'None', 'max_length': '16', 'null': 'True'})
         },
         'fitapp.timeseriesdatatype': {
             'Meta': {'unique_together': "(('category', 'resource'),)", 'object_name': 'TimeSeriesDataType'},
