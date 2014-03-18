@@ -1,4 +1,4 @@
-django-fitbit
+django-fitbit [![Requirements Status](https://requires.io/github/orcasgit/django-fitbit/requirements.png?branch=master)](https://requires.io/github/orcasgit/django-fitbit/requirements/?branch=master)
 =============
 
 Django-fitbit is a Django app for integrating a user's Fitbit data into your
