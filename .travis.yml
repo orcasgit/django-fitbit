@@ -1,12 +1,19 @@
 language: python
-
-python:
-  - 2.6
-  - 2.7
-  - pypy
-
+python: 2.7
+env:
+  - TOX_ENV=pypy-trunk
+  - TOX_ENV=pypy-1.6.X
+  - TOX_ENV=pypy-1.5.X
+  - TOX_ENV=pypy-1.4.X
+  - TOX_ENV=py27-trunk
+  - TOX_ENV=py27-1.6.X
+  - TOX_ENV=py27-1.5.X
+  - TOX_ENV=py27-1.4.X
+  - TOX_ENV=py26-1.6.X
+  - TOX_ENV=py26-1.5.X
+  - TOX_ENV=py26-1.4.X
 install:
   - pip install coveralls
-  - pip install -r requirements_dev.txt
-script: coverage run run_tests.py
+  - pip install tox
+script: tox -e $TOX_ENV
 after_success: coveralls
