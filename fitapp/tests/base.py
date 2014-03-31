@@ -3,9 +3,15 @@ import random
 import string
 from urllib import urlencode
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.test import TestCase
+
+try:
+    from django.contrib.auth import get_user_model
+except ImportError:
+    pass
 
 from fitbit.api import Fitbit
 
@@ -40,12 +46,19 @@ class FitappTestBase(TestCase):
 
     def setUp(self):
         self.username = self.random_string(25)
+        # Django validation lowercases the domain part of the email
+        self.email = '{0}@{1}.com'.format(self.random_string(25),
+                                          self.random_string(10).lower())
         self.password = self.random_string(25)
-        self.user = self.create_user(username=self.username,
-                password=self.password)
+        self.user = self.create_user(
+            username=self.username, email=self.email, password=self.password)
         self.fbuser = self.create_userfitbit(user=self.user)
 
-        self.client.login(username=self.username, password=self.password)
+        username = self.username
+        # The CustomUser model uses the email field as the username
+        if settings.AUTH_USER_MODEL == 'auth.CustomUser':
+            username = self.email
+        self.client.login(username=username, password=self.password)
 
     def random_string(self, length=255, extra_chars=''):
         chars = string.letters + extra_chars
@@ -54,11 +67,16 @@ class FitappTestBase(TestCase):
     def create_user(self, username=None, email=None, password=None, **kwargs):
         username = username or self.random_string(25)
         email = email or '{0}@{1}.com'.format(self.random_string(25),
-                self.random_string(10))
+                                              self.random_string(10).lower())
         password = password or self.random_string(25)
-        user = User.objects.create_user(username, email, password)
-        User.objects.filter(pk=user.pk).update(**kwargs)
-        user = User.objects.get(pk=user.pk)
+        if settings.AUTH_USER_MODEL == 'auth.User':
+            user_objects = User.objects
+            user = user_objects.create_user(username, email, password)
+        else:
+            user_objects = get_user_model().custom_objects
+            user = user_objects.create_user(email, '1981-07-18', password)
+        user_objects.filter(pk=user.pk).update(**kwargs)
+        user = user_objects.get(pk=user.pk)
         return user
 
     def create_userfitbit(self, **kwargs):

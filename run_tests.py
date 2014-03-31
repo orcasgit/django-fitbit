@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import coverage
+import django
 import optparse
 import os
 import sys
@@ -9,6 +10,11 @@ from django.conf import settings
 
 
 if not settings.configured:
+    try:
+        from django.contrib.auth.tests.custom_user import CustomUser
+        has_custom_user = True
+    except ImportError:
+        has_custom_user = False
     settings.configure(
         DATABASES={
             'default': {
@@ -28,9 +34,18 @@ if not settings.configured:
 
         FITAPP_CONSUMER_KEY='',
         FITAPP_CONSUMER_SECRET='',
+        # In >= Django 1.6, we can use a custom user model
+        AUTH_USER_MODEL='auth.CustomUser' if has_custom_user else 'auth.User'
     )
 
 
+# In Django >= 1.7, we need to run setup first
+if hasattr(django, 'setup'):
+    django.setup()
+
+
+from django.contrib.auth.management import create_superuser
+from django.db.models import signals
 from django.test.utils import get_runner
 
 
@@ -55,6 +70,15 @@ def run_tests():
 
     TestRunner = get_runner(settings)
     test_runner = TestRunner(verbosity=1, interactive=True, failfast=False)
+    try:
+        # Workaround a bug in Django >= 1.7 that causes a testrunner failure
+        # when using CustomUser
+        from django.apps import apps
+        signals.post_migrate.disconnect(
+            create_superuser, sender=apps.get_app_config('auth'),
+            dispatch_uid="django.contrib.auth.management.create_superuser")
+    except ImportError:
+        pass
     exit_val = test_runner.run_tests(tests)
 
     if covlevel:
@@ -62,12 +86,6 @@ def run_tests():
         cov.save()
     
     sys.exit(exit_val)
-
-
-import django
-# In Django 1.7, we need to run setup first
-if hasattr(django, 'setup'):
-    django.setup()
 
 
 if __name__ == '__main__':
