@@ -1,5 +1,6 @@
 *.swp
 *.pyc
+.tox
 dist
 django_fitbit.egg-info
 docs/_build/
