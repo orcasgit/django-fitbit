@@ -205,6 +205,14 @@ class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
                     self.period)
             self._check_response(response, 100, steps, error_msg)
 
+    def test_unknown_error(self):
+        period = self.valid_periods[0]
+        data = self._data()
+        for error in (TypeError, ValueError, fitbit_exceptions.HTTPNotFound,
+                      fitbit_exceptions.HTTPBadRequest):
+            self.assertRaises(error, self._mock_utility, error=error,
+                              get_kwargs=data)
+
 
 class TestRetrieveRange(RetrievalViewTestBase, FitappTestBase):
 
