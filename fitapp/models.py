@@ -1,9 +1,12 @@
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db import models
 
 
+UserModel = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
+
+
 class UserFitbit(models.Model):
-    user = models.OneToOneField(User)
+    user = models.OneToOneField(UserModel)
     fitbit_user = models.CharField(max_length=32)
     auth_token = models.TextField()
     auth_secret = models.TextField()
