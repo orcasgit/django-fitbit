@@ -23,7 +23,7 @@ def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
                 "be null, and must be explicitly specified or set in your "
                 "Django settings")
 
-    return Fitbit(consumer_key=consumer_key, consumer_secret=consumer_secret,
+    return Fitbit(consumer_key, consumer_secret,
             **kwargs)
 
 
