@@ -1,2 +1,2 @@
 [run]
-omit = fitapp/tests*,run_tests.py,*/site-packages/*,*/python?.?/*,*/pypy/*
+omit = fitapp/tests*,run_tests.py,*/site-packages/*,*/python?.?/*,*/pypy/*,.tox/*
