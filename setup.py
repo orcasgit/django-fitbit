@@ -9,6 +9,9 @@ setup(
     author_email="",
     packages=find_packages(),
     install_requires=["distribute"] + required,
+    dependency_links = [
+        'git+ssh://git@github.com/orcasgit/python-fitbit.git@oauthlib#egg=fitbit-oauthlib'
+    ],
     include_package_data=True,
     url="https://github.com/orcasgit/django-fitbit/",
     license="",
