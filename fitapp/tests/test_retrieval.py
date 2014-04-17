@@ -87,7 +87,7 @@ class RetrievalViewTestBase(object):
     def _check_response(self, response, code, objects=None, error_msg=None):
         objects = objects or []
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content)
+        data = json.loads(response.content.decode('utf8'))
         self.assertEqual(data['meta']['status_code'], code, error_msg)
         self.assertEqual(data['meta']['total_count'], len(objects),
                 error_msg)

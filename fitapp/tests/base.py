@@ -1,7 +1,12 @@
 from mock import patch, Mock
 import random
-import string
-from urllib import urlencode
+try:
+    from urllib.parse import urlencode
+    from string import ascii_letters
+except:
+    # Python 2.x
+    from urllib import urlencode
+    from string import letters as ascii_letters
 
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
@@ -48,7 +53,7 @@ class FitappTestBase(TestCase):
         self.client.login(username=self.username, password=self.password)
 
     def random_string(self, length=255, extra_chars=''):
-        chars = string.letters + extra_chars
+        chars = ascii_letters + extra_chars
         return ''.join([random.choice(chars) for i in range(length)])
 
     def create_user(self, username=None, email=None, password=None, **kwargs):
@@ -111,7 +116,7 @@ class FitappTestBase(TestCase):
 
     def _error_response(self):
         error_response = Mock(['content'])
-        error_response.content = '{"errors": []}'
+        error_response.content = '{"errors": []}'.encode('utf8')
         return error_response
 
     @patch('fitbit.api.FitbitOauthClient')
