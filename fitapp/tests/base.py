@@ -109,6 +109,11 @@ class FitappTestBase(TestCase):
         except AttributeError:
             pass
 
+    def _error_response(self):
+        error_response = Mock(['content'])
+        error_response.content = '{"errors": []}'
+        return error_response
+
     @patch('fitbit.api.FitbitOauthClient')
     def _mock_client(self, client=None, client_kwargs=None, **kwargs):
         client_kwargs = client_kwargs or {}
@@ -118,7 +123,7 @@ class FitappTestBase(TestCase):
     @patch('fitapp.utils.get_fitbit_steps')
     def _mock_utility(self, utility=None, error=None, response=None, **kwargs):
         if error:
-            utility.side_effect = error('')
+            utility.side_effect = error(self._error_response())
         elif response:
             utility.return_value = response
         return self._get(**kwargs)
