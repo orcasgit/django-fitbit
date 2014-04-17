@@ -132,8 +132,8 @@ class TestLoginView(FitappTestBase):
 
 class TestCompleteView(FitappTestBase):
     url_name = 'fitbit-complete'
-    key = 'abc'
-    secret = '123'
+    resource_owner_key = 'abc'
+    resource_owner_secret = '123'
     user_id = 'userid'
 
     def setUp(self):
@@ -152,8 +152,8 @@ class TestCompleteView(FitappTestBase):
     def _mock_client(self, client_kwargs=None, **kwargs):
         client_kwargs = client_kwargs or {}
         defaults = {
-            'key': self.key,
-            'secret': self.secret,
+            'resource_owner_key': self.resource_owner_key,
+            'resource_owner_secret': self.resource_owner_secret,
             'user_id': self.user_id,
         }
         defaults.update(client_kwargs)
@@ -167,8 +167,8 @@ class TestCompleteView(FitappTestBase):
                 utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         fbuser = UserFitbit.objects.get()
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.key)
-        self.assertEqual(fbuser.auth_secret, self.secret)
+        self.assertEqual(fbuser.auth_token, self.resource_owner_key)
+        self.assertEqual(fbuser.auth_secret, self.resource_owner_secret)
         self.assertEqual(fbuser.fitbit_user, self.user_id)
 
     def test_unauthenticated(self):
@@ -187,8 +187,8 @@ class TestCompleteView(FitappTestBase):
         self.assertRedirectsNoFollow(response, '/test')
         fbuser = UserFitbit.objects.get()
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.key)
-        self.assertEqual(fbuser.auth_secret, self.secret)
+        self.assertEqual(fbuser.auth_token, self.resource_owner_key)
+        self.assertEqual(fbuser.auth_secret, self.resource_owner_secret)
         self.assertEqual(fbuser.fitbit_user, self.user_id)
 
     def test_access_error(self):
@@ -223,8 +223,8 @@ class TestCompleteView(FitappTestBase):
         response = self._mock_client()
         fbuser = UserFitbit.objects.get()
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.key)
-        self.assertEqual(fbuser.auth_secret, self.secret)
+        self.assertEqual(fbuser.auth_token, self.resource_owner_key)
+        self.assertEqual(fbuser.auth_secret, self.resource_owner_secret)
         self.assertEqual(fbuser.fitbit_user, self.user_id)
         self.assertRedirectsNoFollow(response,
                 utils.get_setting('FITAPP_LOGIN_REDIRECT'))

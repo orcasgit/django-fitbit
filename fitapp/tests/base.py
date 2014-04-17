@@ -16,9 +16,9 @@ class MockClient(object):
 
     def __init__(self, **kwargs):
         self.user_id = kwargs.get('user_id', None)
+        self.resource_owner_key = kwargs.get('resource_owner_key', None)
+        self.resource_owner_secret = kwargs.get('resource_owner_secret', None)
         self.error = kwargs.get('error', None)
-        self.key = kwargs.get('key', None)
-        self.secret = kwargs.get('secret', None)
 
     def authorize_token_url(self, *args, **kwargs):
         return '/test'
@@ -29,10 +29,10 @@ class MockClient(object):
     def fetch_access_token(self, *args, **kwargs):
         if self.error:
             raise self.error('')
-        response = Mock(['key', 'secret'])
-        response.key = self.key
-        response.secret = self.secret
-        return response
+        return {
+            'resource_owner_key': self.resource_owner_key,
+            'resource_owner_secret': self.resource_owner_secret
+        }
 
 
 class FitappTestBase(TestCase):
@@ -73,8 +73,8 @@ class FitappTestBase(TestCase):
 
     def create_fitbit(self, **kwargs):
         defaults = {
-            'consumer_key': self.random_string(25),
-            'consumer_secret': self.random_string(25),
+            'client_key': self.random_string(25),
+            'client_secret': self.random_string(25),
         }
         defaults.update(kwargs)
         return Fitbit(**defaults)
