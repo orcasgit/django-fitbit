@@ -8,7 +8,7 @@ setup(
     author="orcas",
     author_email="",
     packages=find_packages(),
-    install_requires=["distribute"] + required,
+    install_requires=["setuptools"] + required,
     include_package_data=True,
     url="https://github.com/orcasgit/django-fitbit/",
     license="",
