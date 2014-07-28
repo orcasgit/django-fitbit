@@ -28,6 +28,11 @@ if not settings.configured:
 
         FITAPP_CONSUMER_KEY='',
         FITAPP_CONSUMER_SECRET='',
+
+        MIDDLEWARE_CLASSES = (
+            'django.contrib.sessions.middleware.SessionMiddleware',
+            'django.contrib.auth.middleware.AuthenticationMiddleware',
+        )
     )
 
 
