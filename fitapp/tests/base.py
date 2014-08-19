@@ -1,7 +1,12 @@
 from mock import patch, Mock
 import random
-import string
-from urllib import urlencode
+try:
+    from urllib.parse import urlencode
+    from string import ascii_letters
+except:
+    # Python 2.x
+    from urllib import urlencode
+    from string import letters as ascii_letters
 
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
@@ -16,9 +21,9 @@ class MockClient(object):
 
     def __init__(self, **kwargs):
         self.user_id = kwargs.get('user_id', None)
+        self.resource_owner_key = kwargs.get('resource_owner_key', None)
+        self.resource_owner_secret = kwargs.get('resource_owner_secret', None)
         self.error = kwargs.get('error', None)
-        self.key = kwargs.get('key', None)
-        self.secret = kwargs.get('secret', None)
 
     def authorize_token_url(self, *args, **kwargs):
         return '/test'
@@ -29,10 +34,10 @@ class MockClient(object):
     def fetch_access_token(self, *args, **kwargs):
         if self.error:
             raise self.error('')
-        response = Mock(['key', 'secret'])
-        response.key = self.key
-        response.secret = self.secret
-        return response
+        return {
+            'resource_owner_key': self.resource_owner_key,
+            'resource_owner_secret': self.resource_owner_secret
+        }
 
     def make_request(self, *args, **kwargs):
         response = Mock()
@@ -54,7 +59,7 @@ class FitappTestBase(TestCase):
         self.client.login(username=self.username, password=self.password)
 
     def random_string(self, length=255, extra_chars=''):
-        chars = string.letters + extra_chars
+        chars = ascii_letters + extra_chars
         return ''.join([random.choice(chars) for i in range(length)])
 
     def create_user(self, username=None, email=None, password=None, **kwargs):
@@ -79,8 +84,8 @@ class FitappTestBase(TestCase):
 
     def create_fitbit(self, **kwargs):
         defaults = {
-            'consumer_key': self.random_string(25),
-            'consumer_secret': self.random_string(25),
+            'client_key': self.random_string(25),
+            'client_secret': self.random_string(25),
         }
         defaults.update(kwargs)
         return Fitbit(**defaults)
@@ -114,6 +119,11 @@ class FitappTestBase(TestCase):
         except AttributeError:
             pass
 
+    def _error_response(self):
+        error_response = Mock(['content'])
+        error_response.content = '{"errors": []}'.encode('utf8')
+        return error_response
+
     @patch('fitbit.api.FitbitOauthClient')
     def _mock_client(self, client=None, client_kwargs=None, **kwargs):
         client_kwargs = client_kwargs or {}
@@ -123,7 +133,7 @@ class FitappTestBase(TestCase):
     @patch('fitapp.utils.get_fitbit_data')
     def _mock_utility(self, utility=None, error=None, response=None, **kwargs):
         if error:
-            utility.side_effect = error('')
+            utility.side_effect = error(self._error_response())
         elif response:
             utility.return_value = response
         return self._get(**kwargs)

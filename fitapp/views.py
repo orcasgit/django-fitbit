@@ -44,11 +44,10 @@ def login(request):
     else:
         request.session.pop('fitbit_next', None)
 
-    fb = utils.create_fitbit()
-    callback_url = request.build_absolute_uri(reverse('fitbit-complete'))
-    parameters = {'oauth_callback': callback_url}
-    token = fb.client.fetch_request_token(parameters)
-    token_url = fb.client.authorize_token_url(token)
+    callback_uri = request.build_absolute_uri(reverse('fitbit-complete'))
+    fb = utils.create_fitbit(callback_uri=callback_uri)
+    token = fb.client.fetch_request_token()
+    token_url = fb.client.authorize_token_url()
     request.session['token'] = token
     return redirect(token_url)
 
@@ -80,12 +79,12 @@ def complete(request):
     except KeyError:
         return redirect(reverse('fitbit-error'))
     try:
-        access_token = fb.client.fetch_access_token(token, verifier)
+        fb.client.fetch_access_token(verifier, token=token)
     except:
         return redirect(reverse('fitbit-error'))
     fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
-    fbuser.auth_token = access_token.key
-    fbuser.auth_secret = access_token.secret
+    fbuser.auth_token = fb.client.resource_owner_key
+    fbuser.auth_secret = fb.client.resource_owner_secret
     fbuser.fitbit_user = fb.client.user_id
     fbuser.save()
     # Add the Fitbit user info to the session

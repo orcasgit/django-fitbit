@@ -27,7 +27,7 @@ class TestRetrievalUtility(FitappTestBase):
     @patch.object(Fitbit, 'time_series')
     def _mock_time_series(self, time_series=None, error=None, response=None):
         if error:
-            time_series.side_effect = error('')
+            time_series.side_effect = error(self._error_response())
         elif response:
             time_series.return_value = response
         resource_type = TimeSeriesDataType.objects.get(
@@ -134,7 +134,7 @@ class RetrievalViewTestBase(object):
     def _check_response(self, response, code, objects=None, error_msg=None):
         objects = objects or []
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content)
+        data = json.loads(response.content.decode('utf8'))
         self.assertEqual(data['meta']['status_code'], code, error_msg)
         self.assertEqual(data['meta']['total_count'], len(objects),
                          error_msg)

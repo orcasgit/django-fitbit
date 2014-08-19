@@ -1,2 +1,2 @@
-fitbit==0.0.2
+fitbit>=0.1.0
 django-celery==3.0.17

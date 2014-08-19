@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-required = [line for line in open('requirements.txt').read().split("\n")]
+required = [line for line in open('requirements/base.txt').read().split("\n")]
 
 setup(
     name="django-fitbit",
@@ -8,7 +8,7 @@ setup(
     author="orcas",
     author_email="",
     packages=find_packages(),
-    install_requires=["distribute"] + required,
+    install_requires=["setuptools"] + required,
     include_package_data=True,
     url="https://github.com/orcasgit/django-fitbit/",
     license="",
@@ -21,5 +21,6 @@ setup(
         "Framework :: Django",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 2 :: Only"
-    ]
+    ],
+    test_suite="runtests.runtests"
 )
