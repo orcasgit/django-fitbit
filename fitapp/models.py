@@ -1,10 +1,14 @@
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 
+
+UserModel = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
+
+
 @python_2_unicode_compatible
 class UserFitbit(models.Model):
-    user = models.OneToOneField(User)
+    user = models.OneToOneField(UserModel)
     fitbit_user = models.CharField(max_length=32)
     auth_token = models.TextField()
     auth_secret = models.TextField()
@@ -53,7 +57,7 @@ class TimeSeriesData(models.Model):
     time series API (https://wiki.fitbit.com/display/API/API-Get-Time-Series).
     """
 
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(UserModel)
     resource_type = models.ForeignKey(TimeSeriesDataType)
     date = models.DateField()
     value = models.CharField(null=True, default=None, max_length=32)
