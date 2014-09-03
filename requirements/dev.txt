@@ -3,5 +3,5 @@
 
 django-debug-toolbar
 sphinx
-django==1.6.6
+django==1.7
 tox==1.7.2
