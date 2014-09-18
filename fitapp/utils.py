@@ -48,20 +48,22 @@ def get_fitbit_data(fbuser, resource_type, base_date=None, period=None,
     """Creates a Fitbit API instance and retrieves step data for the period.
 
     Several exceptions may be thrown:
-        TypeError        - Either end_date or period must be specified, but
-                           not both.
-        ValueError       - Invalid argument formats.
-        HTTPUnauthorized - 401 - fbuser has bad authentication credentials.
-        HTTPForbidden    - 403 - This isn't specified by Fitbit, but does
+        TypeError           - Either end_date or period must be specified, but
+                              not both.
+        ValueError          - Invalid argument formats.
+        HTTPUnauthorized    - 401 - fbuser has bad authentication credentials.
+        HTTPForbidden       - 403 - This isn't specified by Fitbit, but does
                                  appear in the Python Fitbit library.
-        HTTPNotFound     - 404 - The specific resource doesn't exist.
-        HTTPConflict     - 409 - Usually a rate limit issue.
-        HTTPServerError  - >=500 - Fitbit server error or maintenance.
-        HTTPBadRequest   - >=400 - Bad request.
+        HTTPNotFound        - 404 - The specific resource doesn't exist.
+        HTTPConflict        - 409 - HTTP conflict
+        HTTPTooManyRequests - 429 - Hitting the rate limit
+        HTTPServerError     - >=500 - Fitbit server error or maintenance.
+        HTTPBadRequest      - >=400 - Bad request.
     """
     fb = create_fitbit(**fbuser.get_user_data())
     resource_path = resource_type.path()
-    data = fb.time_series(resource_path, period=period, base_date=base_date,
+    data = fb.time_series(resource_path, user_id=fbuser.fitbit_user,
+                          period=period, base_date=base_date,
                           end_date=end_date)
     return data[resource_path.replace('/', '-')]
 

@@ -162,6 +162,7 @@ class TestCompleteView(FitappTestBase):
 
     def test_get(self):
         """Complete view should fetch & store user's access credentials."""
+        UserFitbit.objects.all().delete()
         response = self._mock_client()
         self.assertRedirectsNoFollow(response,
                 utils.get_setting('FITAPP_LOGIN_REDIRECT'))

@@ -21,7 +21,6 @@ if not settings.configured:
             'django.contrib.contenttypes',
             'django.contrib.messages',
             'django.contrib.sessions',
-            'djcelery',
             'fitapp',
         ],
         SECRET_KEY='something-secret',
@@ -42,7 +41,6 @@ if not settings.configured:
                 'fitapp.tasks': {'handlers': ['null'], 'level': 'DEBUG'},
             },
         },
-        TEST_RUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner',
 
         MIDDLEWARE_CLASSES = (
             'django.contrib.sessions.middleware.SessionMiddleware',

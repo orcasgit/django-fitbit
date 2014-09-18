@@ -18,8 +18,8 @@ class UserFitbit(models.Model):
 
     def get_user_data(self):
         return {
-            'user_key': self.auth_token,
-            'user_secret': self.auth_secret,
+            'resource_owner_key': self.auth_token,
+            'resource_owner_secret': self.auth_secret,
             'user_id': self.fitbit_user,
         }
 
@@ -43,6 +43,9 @@ class TimeSeriesDataType(models.Model):
     )
     category = models.IntegerField(choices=CATEGORY_CHOICES)
     resource = models.CharField(max_length=128)
+
+    def __str__(self):
+        return self.path()
 
     class Meta:
         unique_together = ('category', 'resource',)

@@ -56,16 +56,7 @@ send notifications when the data changes and we will queue tasks to get
 the updated data. When requests for fitbit data are made to fitapp, we
 will always pull the latest data from our own database instead of getting
 it directly from Fitbit. To use this feature, you will need to setup a
-celery worker to handle the tasks.
-
-Example celery configuration with rabbitmq as a backend:
-
-FITAPP_QUEUE = "fitapp_get_data"
-CELERY_ROUTES = {'fitapp.tasks.update_fitbit_data_task':
-                 {'queue': FITAPP_QUEUE}}
-BROKER_URL = "amqp://user:password@your_host:5672/your_vhost"
-import djcelery
-djcelery.setup_loader()
+celery worker to handle the tasks. Following `celery's guide for Django<http://celery.readthedocs.org/en/latest/django/first-steps-with-django.html>`_ will get you started.
 
 
 .. _FITAPP_SUBSCRIBER_ID:

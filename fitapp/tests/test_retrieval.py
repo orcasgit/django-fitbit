@@ -1,16 +1,18 @@
+from __future__ import absolute_import
+
+import celery
 import json
-import StringIO
 
 from dateutil import parser
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.urlresolvers import reverse
-from mock import patch
+from mock import MagicMock, patch
 
 from fitbit import exceptions as fitbit_exceptions
 from fitbit.api import Fitbit
 
 from fitapp import utils
 from fitapp.models import UserFitbit, TimeSeriesData, TimeSeriesDataType
+from fitapp.tasks import get_time_series_data
 
 from .base import FitappTestBase
 
@@ -72,6 +74,10 @@ class TestRetrievalUtility(FitappTestBase):
         """HTTPBadRequest from the Fitbit.time_series should propagate."""
         self._error_test(fitbit_exceptions.HTTPBadRequest)
 
+    def test_too_many_requests(self):
+        """HTTPTooManyRequests from the Fitbit.time_series should propagate."""
+        self._error_test(fitbit_exceptions.HTTPTooManyRequests)
+
     def test_retrieval(self):
         """get_fitbit_data should return a list of daily steps data."""
         response = {'activities-steps': [1, 2, 3]}
@@ -87,17 +93,14 @@ class TestRetrievalTask(FitappTestBase):
         self.value = 10
 
     def _receive_fitbit_updates(self):
-        updates_obj = [{
-            'subscriptionId': self.fbuser.fitbit_user,
-            'ownerId': self.fbuser.fitbit_user,
-            'collectionType': self.category,
-            'date': self.date
-        }]
-        # Create an in memory file object to use for the POST
-        updates_stringio = StringIO.StringIO(json.dumps(updates_obj))
-        updates = InMemoryUploadedFile(updates_stringio, None, 'updates',
-                                       'text', updates_stringio.len, None)
-        res = self.client.post(reverse('fitbit-update'), {'updates': updates})
+        updates = json.dumps([{
+            u'subscriptionId': self.fbuser.user.id,
+            u'ownerId': self.fbuser.fitbit_user,
+            u'collectionType': self.category,
+            u'date': self.date
+        }])
+        res = self.client.post(reverse('fitbit-update'), data=updates,
+                               content_type='multipart/form-data')
         assert res.status_code, 204
 
     @patch('fitapp.utils.get_fitbit_data')
@@ -108,16 +111,47 @@ class TestRetrievalTask(FitappTestBase):
         category = getattr(TimeSeriesDataType, self.category)
         resources = TimeSeriesDataType.objects.filter(category=category)
         self._receive_fitbit_updates()
-        assert get_fitbit_data.call_count, resources.count()
+        self.assertEqual(get_fitbit_data.call_count, resources.count())
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
             assert tsd.value, self.value
 
-    @patch('fitapp.tasks.update_fitbit_data_task')
-    def test_problem_queueing_task(self, update_fitbit_data_task):
-        # If queueing the task raises an exception, it doesn't propagate
-        update_fitbit_data_task.delay.side_effect = Exception
+    @patch('fitapp.utils.get_fitbit_data')
+    @patch('django.core.cache.cache.add')
+    def test_subscription_update_locked(self, mock_add, get_fitbit_data):
+        # Check that celery tasks do not get made when a notification is
+        # received from Fitbit, but there is already a matching task in
+        # progress
+        mock_add.return_value = False
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
         self._receive_fitbit_updates()
+        self.assertEqual(get_fitbit_data.call_count, 0)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+    @patch('fitapp.utils.get_fitbit_data')
+    @patch('fitapp.tasks.get_time_series_data.retry')
+    def test_subscription_update_too_many(self, mock_retry, get_fitbit_data):
+        # Check that celery tasks get postponed if the rate limit is hit
+        mock_retry.return_value = celery.exceptions.Retry()
+        exc = fitbit_exceptions.HTTPTooManyRequests(self._error_response())
+        exc.retry_after_secs = 21
+        get_fitbit_data.side_effect = exc
+        category = getattr(TimeSeriesDataType, self.category)
+        resources = TimeSeriesDataType.objects.filter(category=category)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+        self._receive_fitbit_updates()
+        self.assertEqual(get_fitbit_data.call_count, resources.count())
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+        mock_retry.assert_called_with(exc, countdown=21)
+
+    def test_problem_queueing_task(self):
+        get_time_series_data = MagicMock()
+        # If queueing the task raises an exception, it doesn't propagate
+        get_time_series_data.delay.side_effect = Exception
+        try:
+            self._receive_fitbit_updates()
+        except:
+            assert False, 'Any errors should be captured in the view'
 
 
 class RetrievalViewTestBase(object):

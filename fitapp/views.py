@@ -19,7 +19,7 @@ from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
 from . import forms
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
-from .tasks import update_fitbit_data_task
+from .tasks import get_time_series_data
 
 
 @login_required
@@ -94,7 +94,14 @@ def complete(request):
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
             return redirect(reverse('fitbit-error'))
-        fb.subscription(fbuser.fitbit_user, SUBSCRIBER_ID)
+        fb.subscription(fbuser.user.id, SUBSCRIBER_ID)
+        # Create tasks for all data in all data types
+        for i, _type in enumerate(TimeSeriesDataType.objects.all()):
+            # Delay execution for a few seconds to speed up response
+            # Offset each call by 2 seconds so they don't bog down the server
+            get_time_series_data.apply_async(
+                (fbuser.fitbit_user, _type.category, _type.resource,),
+                countdown=10 + (i * 2))
 
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
         'FITAPP_LOGIN_REDIRECT')
@@ -154,25 +161,31 @@ def logout(request):
         `fitbit-logout`
     """
     user = request.user
-    fbuser = UserFitbit.objects.filter(user=user)
-    if utils.get_setting('FITAPP_SUBSCRIBE'):
-        try:
-            fb = utils.create_fitbit(**fbuser[0].get_user_data())
-            subs = fb.list_subscriptions()['apiSubscriptions']
-            if fbuser[0].fitbit_user in [s['subscriptionId'] for s in subs]:
+    try:
+        fbuser = user.userfitbit
+    except UserFitbit.DoesNotExist:
+        pass
+    else:
+        if utils.get_setting('FITAPP_SUBSCRIBE'):
+            try:
                 SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
-                fb.subscription(fbuser[0].fitbit_user, SUBSCRIBER_ID,
-                                method="DELETE")
-        except:
-            return redirect(reverse('fitbit-error'))
-    fbuser.delete()
+            except ImproperlyConfigured:
+                return redirect(reverse('fitbit-error'))
+            fb = utils.create_fitbit(**fbuser.get_user_data())
+            try:
+                subs = fb.list_subscriptions()['apiSubscriptions']
+                if fbuser.fitbit_user in [s['ownerId'] for s in subs]:
+                    fb.subscription(fbuser.user.id, SUBSCRIBER_ID,
+                                    method="DELETE")
+            except Exception:
+                return redirect(reverse('fitbit-error'))
+        fbuser.delete()
     next_url = request.GET.get('next', None) or utils.get_setting(
         'FITAPP_LOGOUT_REDIRECT')
     return redirect(next_url)
 
 
 @csrf_exempt
-@require_POST
 def update(request):
     """Receive notification from Fitbit.
 
@@ -184,15 +197,21 @@ def update(request):
         `fitbit-update`
     """
 
-    # The updates come in as a json file in a form POST
-    if request.FILES:
+    # The updates come in as a json body in a POST request
+    if request.method == 'POST':
         try:
-            updates = json.loads(request.FILES['updates'].read())
-            # Create a celery task for each update
+            updates = json.loads(request.body)
+            # Create a celery task for each data type in the update
             for update in updates:
                 cat = getattr(TimeSeriesDataType, update['collectionType'])
-                update_fitbit_data_task.delay(
-                    update['ownerId'], cat, update['date'])
+                resources = TimeSeriesDataType.objects.filter(category=cat)
+                for i, _type in enumerate(resources):
+                    # Offset each call by 2 seconds so they don't bog down the
+                    # server
+                    get_time_series_data.apply_async(
+                        (update['ownerId'], _type.category, _type.resource,),
+                        {'date': parser.parse(update['date'])},
+                        countdown=(2 * i))
         except:
             return redirect(reverse('fitbit-error'))
 

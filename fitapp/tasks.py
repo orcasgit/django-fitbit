@@ -1,33 +1,73 @@
 import logging
+import sys
 
-from celery import task
+from celery import shared_task
+from celery.exceptions import Ignore, Reject
 from dateutil import parser
+from django.core.cache import cache
+from fitbit.exceptions import HTTPTooManyRequests
 
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
 
 
 logger = logging.getLogger(__name__)
+LOCK_EXPIRE = 60 * 5 # Lock expires in 5 minutes
 
 
-@task
-def update_fitbit_data_task(fitbit_user, category, date):
-    logger.debug("FITAPP DATA TASK")
+@shared_task
+def get_time_series_data(fitbit_user, cat, resource, date=None):
+    """ Get the user's time series data """
+
     try:
-        resources = TimeSeriesDataType.objects.filter(category=category)
+        _type = TimeSeriesDataType.objects.get(category=cat, resource=resource)
+    except TimeSeriesDataType.DoesNotExist:
+        logger.exception("The resource %s in category %s doesn't exist" % (
+            resource, cat))
+        raise Reject(sys.exc_info()[1], requeue=False)
+
+    # Create a lock so we don't try to run the same task multiple times
+    sdat = date.strftime('%Y-%m-%d') if date else 'ALL'
+    lock_id = '{0}-lock-{1}-{2}-{3}'.format(__name__, fitbit_user, _type, sdat)
+    if not cache.add(lock_id, 'true', LOCK_EXPIRE):
+        logger.debug('Already retrieving %s data for date %s, user %s' % (
+            _type, fitbit_user, sdat))
+        raise Ignore()
+
+    try:
+        fbuser = UserFitbit.objects.get(fitbit_user=fitbit_user)
+    except UserFitbit.DoesNotExist:
+        logger.exception("The fitbit user %s doesn't exist" % fitbit_user)
+        raise Reject(sys.exc_info()[1], requeue=False)
+
+    dates = {'base_date': 'today', 'period': 'max'}
+    if date:
         dates = {'base_date': date, 'end_date': date}
-        date_obj = parser.parse(date)
-        for resource in resources:
-            for user_fb in UserFitbit.objects.filter(fitbit_user=fitbit_user):
-                data = utils.get_fitbit_data(user_fb, resource, **dates)
-                for datum in data:
-                    # Create new record or update existing record
-                    tsd, created = TimeSeriesData.objects.get_or_create(
-                        user=user_fb.user, resource_type=resource,
-                        date=date_obj)
-                    tsd.value = datum['value'] if datum['value'] else None
-                    tsd.save()
-    except:
-        logger.exception("Exception updating data")
-        raise
-    logger.debug("FITBIT DATA UPDATED")
+    try:
+        data = utils.get_fitbit_data(fbuser, _type, **dates)
+    except HTTPTooManyRequests:
+        # We have hit the rate limit for the user, retry when it's reset,
+        # according to the reply from the failing API call
+        e = sys.exc_info()[1]
+        logger.debug('Rate limit reached, will try again in %s seconds' %
+                     e.retry_after_secs)
+        raise get_time_series_data.retry(e, countdown=e.retry_after_secs)
+    except Exception:
+        exc = sys.exc_info()[1]
+        logger.exception("Exception updating data: %s" % exc)
+        raise Reject(exc, requeue=False)
+
+    try:
+        for datum in data:
+            # Create new record or update existing record
+            date = parser.parse(datum['dateTime'])
+            tsd, created = TimeSeriesData.objects.get_or_create(
+                user=fbuser.user, resource_type=_type, date=date)
+            tsd.value = datum['value']
+            tsd.save()
+        # Release the lock
+        cache.delete(lock_id)
+    except Exception:
+        exc = sys.exc_info()[1]
+        logger.exception("Exception updating data: %s" % exc)
+        raise Reject(exc, requeue=False)
