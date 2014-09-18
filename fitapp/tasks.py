@@ -34,17 +34,22 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
             _type, fitbit_user, sdat))
         raise Ignore()
 
-    try:
-        fbuser = UserFitbit.objects.get(fitbit_user=fitbit_user)
-    except UserFitbit.DoesNotExist:
-        logger.exception("The fitbit user %s doesn't exist" % fitbit_user)
-        raise Reject(sys.exc_info()[1], requeue=False)
-
+    fbusers = UserFitbit.objects.filter(fitbit_user=fitbit_user)
     dates = {'base_date': 'today', 'period': 'max'}
     if date:
         dates = {'base_date': date, 'end_date': date}
     try:
-        data = utils.get_fitbit_data(fbuser, _type, **dates)
+        for fbuser in fbusers:
+            data = utils.get_fitbit_data(fbuser, _type, **dates)
+            for datum in data:
+                # Create new record or update existing record
+                date = parser.parse(datum['dateTime'])
+                tsd, created = TimeSeriesData.objects.get_or_create(
+                    user=fbuser.user, resource_type=_type, date=date)
+                tsd.value = datum['value']
+                tsd.save()
+        # Release the lock
+        cache.delete(lock_id)
     except HTTPTooManyRequests:
         # We have hit the rate limit for the user, retry when it's reset,
         # according to the reply from the failing API call
@@ -52,21 +57,6 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
         logger.debug('Rate limit reached, will try again in %s seconds' %
                      e.retry_after_secs)
         raise get_time_series_data.retry(e, countdown=e.retry_after_secs)
-    except Exception:
-        exc = sys.exc_info()[1]
-        logger.exception("Exception updating data: %s" % exc)
-        raise Reject(exc, requeue=False)
-
-    try:
-        for datum in data:
-            # Create new record or update existing record
-            date = parser.parse(datum['dateTime'])
-            tsd, created = TimeSeriesData.objects.get_or_create(
-                user=fbuser.user, resource_type=_type, date=date)
-            tsd.value = datum['value']
-            tsd.save()
-        # Release the lock
-        cache.delete(lock_id)
     except Exception:
         exc = sys.exc_info()[1]
         logger.exception("Exception updating data: %s" % exc)
