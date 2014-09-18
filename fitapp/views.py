@@ -101,7 +101,7 @@ def complete(request):
             # Offset each call by 2 seconds so they don't bog down the server
             get_time_series_data.apply_async(
                 (fbuser.fitbit_user, _type.category, _type.resource,),
-                countdown=10 + (i * 2))
+                countdown=10 + (i * 5))
 
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
         'FITAPP_LOGIN_REDIRECT')
