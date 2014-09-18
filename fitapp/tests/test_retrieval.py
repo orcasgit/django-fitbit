@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import celery
 import json
+import sys
 
 from dateutil import parser
 from django.core.urlresolvers import reverse
@@ -27,9 +28,13 @@ class TestRetrievalUtility(FitappTestBase):
         self.end_date = None
 
     @patch.object(Fitbit, 'time_series')
-    def _mock_time_series(self, time_series=None, error=None, response=None):
+    def _mock_time_series(self, time_series=None, error=None, response=None,
+                          error_attrs={}):
         if error:
-            time_series.side_effect = error(self._error_response())
+            exc = error(self._error_response())
+            for k, v in error_attrs.items():
+                setattr(exc, k, v)
+            time_series.side_effect = exc
         elif response:
             time_series.return_value = response
         resource_type = TimeSeriesDataType.objects.get(
@@ -76,7 +81,13 @@ class TestRetrievalUtility(FitappTestBase):
 
     def test_too_many_requests(self):
         """HTTPTooManyRequests from the Fitbit.time_series should propagate."""
-        self._error_test(fitbit_exceptions.HTTPTooManyRequests)
+        try:
+            self._mock_time_series(error=fitbit_exceptions.HTTPTooManyRequests,
+                                   error_attrs={'retry_after_secs': 35})
+        except fitbit_exceptions.HTTPTooManyRequests:
+            self.assertEqual(sys.exc_info()[1].retry_after_secs, 35)
+        else:
+            assert False, 'Should have thrown exception'
 
     def test_retrieval(self):
         """get_fitbit_data should return a list of daily steps data."""
