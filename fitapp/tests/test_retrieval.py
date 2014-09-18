@@ -5,6 +5,7 @@ import json
 import sys
 
 from dateutil import parser
+from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from mock import MagicMock, patch
 
@@ -123,6 +124,12 @@ class TestRetrievalTask(FitappTestBase):
         resources = TimeSeriesDataType.objects.filter(category=category)
         self._receive_fitbit_updates()
         self.assertEqual(get_fitbit_data.call_count, resources.count())
+        # Check that the cache locks have been deleted
+        for resource in resources:
+            self.assertEqual(
+                cache.get('fitapp.get_time_series_data-lock-%s-%s-%s' % (
+                    category, resource.resource, self.date)
+                ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
             assert tsd.value, self.value
