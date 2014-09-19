@@ -178,7 +178,7 @@ def logout(request):
                     fb.subscription(fbuser.user.id, SUBSCRIBER_ID,
                                     method="DELETE")
             except Exception:
-                return redirect(reverse('fitbit-error'))
+                pass
         fbuser.delete()
     next_url = request.GET.get('next', None) or utils.get_setting(
         'FITAPP_LOGOUT_REDIRECT')
