@@ -164,8 +164,8 @@ class TestCompleteView(FitappTestBase):
         """Complete view should fetch & store user's access credentials."""
         UserFitbit.objects.all().delete()
         response = self._mock_client()
-        self.assertRedirectsNoFollow(response,
-                utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        self.assertRedirectsNoFollow(
+        	 response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         fbuser = UserFitbit.objects.get()
         self.assertEqual(fbuser.user, self.user)
         self.assertEqual(fbuser.auth_token, self.resource_owner_key)
@@ -227,8 +227,8 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(fbuser.auth_token, self.resource_owner_key)
         self.assertEqual(fbuser.auth_secret, self.resource_owner_secret)
         self.assertEqual(fbuser.fitbit_user, self.user_id)
-        self.assertRedirectsNoFollow(response,
-                utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        self.assertRedirectsNoFollow(
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
 
 
 class TestErrorView(FitappTestBase):
