@@ -283,9 +283,8 @@ class TestLogoutView(FitappTestBase):
     def test_get(self, apply_async):
         """Logout view should remove associated UserFitbit and redirect."""
         response = self._get()
-        apply_async.assert_called_with(
-            (self.user.id, settings.FITAPP_SUBSCRIBER_ID),
-            self.fbuser.get_user_data(), countdown=5)
+        apply_async.assert_called_once_with(kwargs=self.fbuser.get_user_data(),
+                                            countdown=5)
         self.assertRedirectsNoFollow(response,
                 utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         self.assertEqual(UserFitbit.objects.count(), 0)
@@ -309,9 +308,8 @@ class TestLogoutView(FitappTestBase):
     def test_next(self, apply_async):
         """Logout view should redirect to GET['next'] if available."""
         response = self._get(get_kwargs={'next': '/test'})
-        apply_async.assert_called_with(
-            (self.user.id, settings.FITAPP_SUBSCRIBER_ID),
-            self.fbuser.get_user_data(), countdown=5)
+        apply_async.assert_called_with(kwargs=self.fbuser.get_user_data(),
+                                       countdown=5)
         self.assertRedirectsNoFollow(response, '/test')
         self.assertEqual(UserFitbit.objects.count(), 0)
 
@@ -332,18 +330,24 @@ class TestSubscription(FitappTestBase):
     @patch('fitbit.Fitbit.subscription')
     @patch('fitbit.Fitbit.list_subscriptions')
     def test_unsubscribe(self, list_subscriptions, subscription):
-        subscriptions = [{'ownerId': self.fbuser.fitbit_user}]
-        list_subscriptions.return_value = {'apiSubscriptions': subscriptions}
-        unsubscribe.apply_async((self.user.id, 1), self.fbuser.get_user_data())
+        sub = {
+            u'ownerId': self.fbuser.fitbit_user,
+            u'subscriberId': u'1',
+            u'subscriptionId': str(self.user.id).encode('utf8'),
+            u'collectionType': u'user',
+            u'ownerType': u'user'
+        }
+        list_subscriptions.return_value = {'apiSubscriptions': [sub]}
+        unsubscribe.apply_async(kwargs=self.fbuser.get_user_data())
         list_subscriptions.assert_called_once_with()
-        subscription.assert_called_once_with(self.user.id, 1, method="DELETE")
+        subscription.assert_called_once_with(
+            sub['subscriptionId'], sub['subscriberId'], method="DELETE")
 
     @patch('fitbit.Fitbit.subscription')
     @patch('fitbit.Fitbit.list_subscriptions')
     def test_unsubscribe_error(self, list_subscriptions, subscription):
         list_subscriptions.side_effect = HTTPConflict
-        apply_result = unsubscribe.apply_async(
-            (self.user.id, 1,), self.fbuser.get_user_data())
-        self.assertEqual(apply_result.status, 'REJECTED')
+        result = unsubscribe.apply_async(kwargs=self.fbuser.get_user_data())
+        self.assertEqual(result.status, 'REJECTED')
         list_subscriptions.assert_called_once_with()
         self.assertEqual(subscription.call_count, 0)

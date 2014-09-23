@@ -31,16 +31,15 @@ def subscribe(fitbit_user, subscriber_id):
 
 
 @shared_task
-def unsubscribe(fitapp_user_id, subscriber_id, resource_owner_key=None,
-                resource_owner_secret=None, user_id=None):
+def unsubscribe(*args, **kwargs):
     """ Unsubscribe from a user's fitbit data """
 
-    fb = utils.create_fitbit(resource_owner_key, resource_owner_secret,
-                             user_id=user_id)
+    fb = utils.create_fitbit(**kwargs)
     try:
-        subs = fb.list_subscriptions()['apiSubscriptions']
-        if user_id in [s['ownerId'] for s in subs]:
-            fb.subscription(fitapp_user_id, subscriber_id, method="DELETE")
+        for sub in fb.list_subscriptions()['apiSubscriptions']:
+            if sub['ownerId'] == kwargs['user_id']:
+                fb.subscription(sub['subscriptionId'], sub['subscriberId'],
+                                method="DELETE")
     except:
         exc = sys.exc_info()[1]
         logger.exception("Error unsubscribing user: %s" % exc)

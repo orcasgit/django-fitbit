@@ -172,8 +172,7 @@ def logout(request):
                 SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
             except ImproperlyConfigured:
                 return redirect(reverse('fitbit-error'))
-            unsubscribe.apply_async(
-                (user.id, SUBSCRIBER_ID,), fbuser.get_user_data(), countdown=5)
+            unsubscribe.apply_async(kwargs=fbuser.get_user_data(), countdown=5)
         fbuser.delete()
     next_url = request.GET.get('next', None) or utils.get_setting(
         'FITAPP_LOGOUT_REDIRECT')
