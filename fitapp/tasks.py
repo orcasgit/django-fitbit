@@ -16,6 +16,39 @@ LOCK_EXPIRE = 60 * 5 # Lock expires in 5 minutes
 
 
 @shared_task
+def subscribe(fitbit_user, subscriber_id):
+    """ Subscribe to the user's fitbit data """
+
+    fbusers = UserFitbit.objects.filter(fitbit_user=fitbit_user)
+    for fbuser in fbusers:
+        fb = utils.create_fitbit(**fbuser.get_user_data())
+        try:
+            fb.subscription(fbuser.user.id, subscriber_id)
+        except:
+            exc = sys.exc_info()[1]
+            logger.exception("Error subscribing user: %s" % exc)
+            raise Reject(exc, requeue=False)
+
+
+@shared_task
+def unsubscribe(fitapp_user_id, subscriber_id, resource_owner_key=None,
+                resource_owner_secret=None, user_id=None):
+    """ Unsubscribe from a user's fitbit data """
+
+    fb = utils.create_fitbit(resource_owner_key, resource_owner_secret,
+                             user_id=user_id)
+    try:
+        subs = fb.list_subscriptions()['apiSubscriptions']
+        if user_id in [s['ownerId'] for s in subs]:
+            fb.subscription(fitapp_user_id, subscriber_id, method="DELETE")
+    except:
+        exc = sys.exc_info()[1]
+        logger.exception("Error unsubscribing user: %s" % exc)
+        raise Reject(exc, requeue=False)
+
+
+
+@shared_task
 def get_time_series_data(fitbit_user, cat, resource, date=None):
     """ Get the user's time series data """
 

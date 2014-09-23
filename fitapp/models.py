@@ -49,6 +49,7 @@ class TimeSeriesDataType(models.Model):
 
     class Meta:
         unique_together = ('category', 'resource',)
+        ordering = ['category', 'resource']
 
     def path(self):
         return '/'.join([self.get_category_display(), self.resource])

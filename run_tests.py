@@ -28,6 +28,8 @@ if not settings.configured:
 
         FITAPP_CONSUMER_KEY='',
         FITAPP_CONSUMER_SECRET='',
+        FITAPP_SUBSCRIBE=True,
+        FITAPP_SUBSCRIBER_ID=1,
 
         LOGGING = {
             'version': 1,

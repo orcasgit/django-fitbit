@@ -12,6 +12,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
+from types import StringType, UnicodeType
 
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
                                HTTPServerError)
@@ -19,7 +20,7 @@ from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
 from . import forms
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
-from .tasks import get_time_series_data
+from .tasks import get_time_series_data, subscribe, unsubscribe
 
 
 @login_required
@@ -94,7 +95,7 @@ def complete(request):
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
             return redirect(reverse('fitbit-error'))
-        fb.subscription(fbuser.user.id, SUBSCRIBER_ID)
+        subscribe.apply_async((fbuser.fitbit_user, SUBSCRIBER_ID), countdown=5)
         # Create tasks for all data in all data types
         for i, _type in enumerate(TimeSeriesDataType.objects.all()):
             # Delay execution for a few seconds to speed up response
@@ -171,14 +172,8 @@ def logout(request):
                 SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
             except ImproperlyConfigured:
                 return redirect(reverse('fitbit-error'))
-            fb = utils.create_fitbit(**fbuser.get_user_data())
-            try:
-                subs = fb.list_subscriptions()['apiSubscriptions']
-                if fbuser.fitbit_user in [s['ownerId'] for s in subs]:
-                    fb.subscription(fbuser.user.id, SUBSCRIBER_ID,
-                                    method="DELETE")
-            except Exception:
-                pass
+            unsubscribe.apply_async(
+                (user.id, SUBSCRIBER_ID,), fbuser.get_user_data(), countdown=5)
         fbuser.delete()
     next_url = request.GET.get('next', None) or utils.get_setting(
         'FITAPP_LOGOUT_REDIRECT')
@@ -249,7 +244,10 @@ def normalize_date_range(request, fitbit_data):
     else:
         period = fitbit_data['period']
         if period != 'max':
-            start = parser.parse(base_date)
+            if type(base_date) in [UnicodeType, StringType]:
+                start = parser.parse(base_date)
+            else:
+                start = base_date
             if 'y' in period:
                 kwargs = {'years': int(period.replace('y', ''))}
             elif 'm' in period:

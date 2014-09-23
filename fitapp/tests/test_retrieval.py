@@ -7,6 +7,8 @@ import sys
 from dateutil import parser
 from django.core.cache import cache
 from django.core.urlresolvers import reverse
+from django.test.utils import override_settings
+from freezegun import freeze_time
 from mock import MagicMock, patch
 
 from fitbit import exceptions as fitbit_exceptions
@@ -165,7 +167,7 @@ class TestRetrievalTask(FitappTestBase):
     def test_problem_queueing_task(self):
         get_time_series_data = MagicMock()
         # If queueing the task raises an exception, it doesn't propagate
-        get_time_series_data.delay.side_effect = Exception
+        get_time_series_data.apply_async.side_effect = Exception
         try:
             self._receive_fitbit_updates()
         except:
@@ -188,8 +190,7 @@ class RetrievalViewTestBase(object):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode('utf8'))
         self.assertEqual(data['meta']['status_code'], code, error_msg)
-        self.assertEqual(data['meta']['total_count'], len(objects),
-                         error_msg)
+        self.assertEqual(data['meta']['total_count'], len(objects), error_msg)
         self.assertEqual(data['objects'], objects, error_msg)
 
     def test_not_authenticated(self):
@@ -214,6 +215,7 @@ class RetrievalViewTestBase(object):
         self._check_response(response, 102)
         self.assertEqual(UserFitbit.objects.count(), 0)
 
+    @override_settings(FITAPP_SUBSCRIBE=False)
     def test_invalid_credentials_unauthorized(self):
         """
         Status code should be 103 & credentials should be deleted when user
@@ -224,6 +226,7 @@ class RetrievalViewTestBase(object):
         self._check_response(response, 103)
         self.assertEqual(UserFitbit.objects.count(), 0)
 
+    @override_settings(FITAPP_SUBSCRIBE=False)
     def test_invalid_credentials_forbidden(self):
         """
         Status code should be 103 & credentials should be deleted when user
@@ -234,12 +237,14 @@ class RetrievalViewTestBase(object):
         self._check_response(response, 103)
         self.assertEqual(UserFitbit.objects.count(), 0)
 
+    @override_settings(FITAPP_SUBSCRIBE=False)
     def test_rate_limited(self):
         """Status code should be 105 when Fitbit rate limit is hit."""
         response = self._mock_utility(get_kwargs=self._data(),
                                       error=fitbit_exceptions.HTTPConflict)
         self._check_response(response, 105)
 
+    @override_settings(FITAPP_SUBSCRIBE=False)
     def test_fitbit_error(self):
         """Status code should be 106 when Fitbit server error occurs."""
         response = self._mock_utility(get_kwargs=self._data(),
@@ -281,11 +286,19 @@ class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
         response = self._get(get_kwargs=self._data())
         self._check_response(response, 104)
 
+    @freeze_time('2012-06-06')
     def test_no_base_date(self):
         """Base date should be optional for period request."""
         data = self._data()
         data.pop('base_date')
-        steps = [{'dateTime': '2000-01-01', 'value': 10}]
+        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        TimeSeriesData.objects.create(
+            user=self.user,
+            resource_type=TimeSeriesDataType.objects.get(
+                category=TimeSeriesDataType.activities, resource='steps'),
+            date=steps[0]['dateTime'],
+            value=steps[0]['value']
+        )
         response = self._mock_utility(response=steps, get_kwargs=data)
         self._check_response(response, 100, steps)
 
@@ -296,7 +309,14 @@ class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
         self._check_response(response, 104)
 
     def test_period(self):
-        steps = [{'dateTime': '2000-01-01', 'value': 10}]
+        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        TimeSeriesData.objects.create(
+            user=self.user,
+            resource_type=TimeSeriesDataType.objects.get(
+                category=TimeSeriesDataType.activities, resource='steps'),
+            date=steps[0]['dateTime'],
+            value=steps[0]['value']
+        )
         for period in self.valid_periods:
             self.period = period
             data = self._data()
@@ -338,7 +358,15 @@ class TestRetrieveRange(RetrievalViewTestBase, FitappTestBase):
         self._check_response(response, 104)
 
     def test_range(self):
-        steps = [{'dateTime': '2000-01-01', 'value': 10}]
+        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        TimeSeriesData.objects.create(
+            user=self.user,
+            resource_type=TimeSeriesDataType.objects.get(
+                category=TimeSeriesDataType.activities, resource='steps'),
+            date=steps[0]['dateTime'],
+            value=steps[0]['value']
+        )
+
         response = self._mock_utility(response=steps,
                                       get_kwargs=self._data())
         self._check_response(response, 100, steps)
