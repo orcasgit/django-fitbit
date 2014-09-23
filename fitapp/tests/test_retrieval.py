@@ -208,8 +208,11 @@ class RetrievalViewTestBase(object):
         self._check_response(response, 101)
         self.assertEqual(UserFitbit.objects.count(), 1)
 
+    @override_settings(FITAPP_SUBSCRIBE=False)
     def test_not_integrated(self):
-        """Status code should be 102 when user is not integrated."""
+        """
+        Status code should be 102 when an unsubscribed user is not integrated.
+        """
         self.fbuser.delete()
         response = self._get(get_kwargs=self._data())
         self._check_response(response, 102)
@@ -325,6 +328,27 @@ class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
                 self.period)
             self._check_response(response, 100, steps, error_msg)
 
+    def test_period_not_integrated(self):
+        """
+        Period data is returned to a subscribed user who is not integrated
+        """
+        self.fbuser.delete()
+        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        TimeSeriesData.objects.create(
+            user=self.user,
+            resource_type=TimeSeriesDataType.objects.get(
+                category=TimeSeriesDataType.activities, resource='steps'),
+            date=steps[0]['dateTime'],
+            value=steps[0]['value']
+        )
+        for period in self.valid_periods:
+            self.period = period
+            data = self._data()
+            response = self._mock_utility(response=steps, get_kwargs=data)
+            error_msg = 'Should be able to retrieve data for {0}.'.format(
+                self.period)
+            self._check_response(response, 100, steps, error_msg)
+
 
 class TestRetrieveRange(RetrievalViewTestBase, FitappTestBase):
 
@@ -358,6 +382,24 @@ class TestRetrieveRange(RetrievalViewTestBase, FitappTestBase):
         self._check_response(response, 104)
 
     def test_range(self):
+        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        TimeSeriesData.objects.create(
+            user=self.user,
+            resource_type=TimeSeriesDataType.objects.get(
+                category=TimeSeriesDataType.activities, resource='steps'),
+            date=steps[0]['dateTime'],
+            value=steps[0]['value']
+        )
+
+        response = self._mock_utility(response=steps,
+                                      get_kwargs=self._data())
+        self._check_response(response, 100, steps)
+
+    def test_range_not_integrated(self):
+        """
+        Range data is returned to a subscribed user who is not integrated
+        """
+        self.fbuser.delete()
         steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
         TimeSeriesData.objects.create(
             user=self.user,
