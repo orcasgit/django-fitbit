@@ -4,4 +4,4 @@
 django-debug-toolbar
 sphinx
 django==1.7
-tox==1.7.2
+tox==1.8.0
