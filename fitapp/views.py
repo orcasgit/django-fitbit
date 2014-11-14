@@ -6,13 +6,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
+from django.db import IntegrityError
 from django.dispatch import receiver
 from django.http import HttpResponse, Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
-from types import StringType, UnicodeType
 
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
                                HTTPServerError)
@@ -21,6 +21,12 @@ from . import forms
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
 from .tasks import get_time_series_data, subscribe, unsubscribe
+
+try:
+    from types import StringType, UnicodeType
+    STRING_TYPES = [StringType, UnicodeType]
+except ImportError:  # Python 3
+    STRING_TYPES = [str]
 
 
 @login_required
@@ -88,6 +94,7 @@ def complete(request):
     fbuser.auth_secret = fb.client.resource_owner_secret
     fbuser.fitbit_user = fb.client.user_id
     fbuser.save()
+
     # Add the Fitbit user info to the session
     request.session['fitbit_profile'] = fb.user_profile_get()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
@@ -191,10 +198,15 @@ def update(request):
         `fitbit-update`
     """
 
-    # The updates come in as a json body in a POST request
+    # The updates can come in two ways:
+    # 1. A json body in a POST request
+    # 2. A json file in a form POST
     if request.method == 'POST':
         try:
-            updates = json.loads(request.body)
+            body = request.body
+            if request.FILES and 'updates' in request.FILES:
+                body = request.FILES['updates'].read()
+            updates = json.loads(body.decode('utf8'))
             # Create a celery task for each data type in the update
             for update in updates:
                 cat = getattr(TimeSeriesDataType, update['collectionType'])
@@ -243,7 +255,7 @@ def normalize_date_range(request, fitbit_data):
     else:
         period = fitbit_data['period']
         if period != 'max':
-            if type(base_date) in [UnicodeType, StringType]:
+            if type(base_date) in STRING_TYPES:
                 start = parser.parse(base_date)
             else:
                 start = base_date

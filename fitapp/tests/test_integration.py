@@ -331,11 +331,11 @@ class TestSubscription(FitappTestBase):
     @patch('fitbit.Fitbit.list_subscriptions')
     def test_unsubscribe(self, list_subscriptions, subscription):
         sub = {
-            u'ownerId': self.fbuser.fitbit_user,
-            u'subscriberId': u'1',
-            u'subscriptionId': str(self.user.id).encode('utf8'),
-            u'collectionType': u'user',
-            u'ownerType': u'user'
+            'ownerId': self.fbuser.fitbit_user,
+            'subscriberId': '1',
+            'subscriptionId': str(self.user.id).encode('utf8'),
+            'collectionType': 'user',
+            'ownerType': 'user'
         }
         list_subscriptions.return_value = {'apiSubscriptions': [sub]}
         unsubscribe.apply_async(kwargs=self.fbuser.get_user_data())

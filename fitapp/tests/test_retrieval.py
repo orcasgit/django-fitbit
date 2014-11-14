@@ -6,6 +6,7 @@ import sys
 
 from dateutil import parser
 from django.core.cache import cache
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.urlresolvers import reverse
 from django.test.utils import override_settings
 from freezegun import freeze_time
@@ -17,6 +18,11 @@ from fitbit.api import Fitbit
 from fitapp import utils
 from fitapp.models import UserFitbit, TimeSeriesData, TimeSeriesDataType
 from fitapp.tasks import get_time_series_data
+
+try:
+    from io import BytesIO
+except ImportError:  # Python 2.x fallback
+    from StringIO import StringIO as BytesIO
 
 from .base import FitappTestBase
 
@@ -106,15 +112,20 @@ class TestRetrievalTask(FitappTestBase):
         self.date = '2013-05-02'
         self.value = 10
 
-    def _receive_fitbit_updates(self):
-        updates = json.dumps([{
-            u'subscriptionId': self.fbuser.user.id,
-            u'ownerId': self.fbuser.fitbit_user,
-            u'collectionType': self.category,
-            u'date': self.date
-        }])
-        res = self.client.post(reverse('fitbit-update'), data=updates,
-                               content_type='multipart/form-data')
+    def _receive_fitbit_updates(self, file=False):
+        d = json.dumps([{
+            'subscriptionId': self.fbuser.user.id,
+            'ownerId': self.fbuser.fitbit_user,
+            'collectionType': self.category,
+            'date': self.date
+        }]).encode('utf8')
+        kwargs = {'data': d, 'content_type': 'application/json'}
+        if file:
+            updates_stringio = BytesIO(d)
+            updates = InMemoryUploadedFile(
+                updates_stringio, None, 'updates', 'text', len(d), None)
+            kwargs = {'data': {'updates': updates}}
+        res = self.client.post(reverse('fitbit-update'), **kwargs)
         assert res.status_code, 204
 
     @patch('fitapp.utils.get_fitbit_data')
@@ -125,6 +136,25 @@ class TestRetrievalTask(FitappTestBase):
         category = getattr(TimeSeriesDataType, self.category)
         resources = TimeSeriesDataType.objects.filter(category=category)
         self._receive_fitbit_updates()
+        self.assertEqual(get_fitbit_data.call_count, resources.count())
+        # Check that the cache locks have been deleted
+        for resource in resources:
+            self.assertEqual(
+                cache.get('fitapp.get_time_series_data-lock-%s-%s-%s' % (
+                    category, resource.resource, self.date)
+                ), None)
+        date = parser.parse(self.date)
+        for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
+            assert tsd.value, self.value
+
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_file(self, get_fitbit_data):
+        # Check that celery tasks get made when an updates file notification
+        # is received from Fitbit.
+        get_fitbit_data.return_value = [{'value': self.value}]
+        category = getattr(TimeSeriesDataType, self.category)
+        resources = TimeSeriesDataType.objects.filter(category=category)
+        self._receive_fitbit_updates(file=True)
         self.assertEqual(get_fitbit_data.call_count, resources.count())
         # Check that the cache locks have been deleted
         for resource in resources:
@@ -294,7 +324,7 @@ class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
         """Base date should be optional for period request."""
         data = self._data()
         data.pop('base_date')
-        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        steps = [{'dateTime': '2012-06-07', 'value': '10'}]
         TimeSeriesData.objects.create(
             user=self.user,
             resource_type=TimeSeriesDataType.objects.get(
@@ -312,7 +342,7 @@ class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
         self._check_response(response, 104)
 
     def test_period(self):
-        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        steps = [{'dateTime': '2012-06-07', 'value': '10'}]
         TimeSeriesData.objects.create(
             user=self.user,
             resource_type=TimeSeriesDataType.objects.get(
@@ -333,7 +363,7 @@ class TestRetrievePeriod(RetrievalViewTestBase, FitappTestBase):
         Period data is returned to a subscribed user who is not integrated
         """
         self.fbuser.delete()
-        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        steps = [{'dateTime': '2012-06-07', 'value': '10'}]
         TimeSeriesData.objects.create(
             user=self.user,
             resource_type=TimeSeriesDataType.objects.get(
@@ -382,7 +412,7 @@ class TestRetrieveRange(RetrievalViewTestBase, FitappTestBase):
         self._check_response(response, 104)
 
     def test_range(self):
-        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        steps = [{'dateTime': '2012-06-07', 'value': '10'}]
         TimeSeriesData.objects.create(
             user=self.user,
             resource_type=TimeSeriesDataType.objects.get(
@@ -400,7 +430,7 @@ class TestRetrieveRange(RetrievalViewTestBase, FitappTestBase):
         Range data is returned to a subscribed user who is not integrated
         """
         self.fbuser.delete()
-        steps = [{u'dateTime': u'2012-06-07', u'value': u'10'}]
+        steps = [{'dateTime': '2012-06-07', 'value': '10'}]
         TimeSeriesData.objects.create(
             user=self.user,
             resource_type=TimeSeriesDataType.objects.get(

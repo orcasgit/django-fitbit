@@ -42,7 +42,7 @@ class MockClient(object):
     def make_request(self, *args, **kwargs):
         response = Mock()
         response.status_code = 204
-        response.content = "{}"
+        response.content = "{}".encode('utf8')
         return response
 
 
