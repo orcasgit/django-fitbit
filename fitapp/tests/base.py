@@ -75,7 +75,7 @@ class FitappTestBase(TestCase):
     def create_userfitbit(self, **kwargs):
         defaults = {
             'user': kwargs.pop('user', self.create_user()),
-            'fitbit_user': self.random_string(25),
+            'fitbit_user': kwargs.pop('fitbit_user', self.random_string(25)),
             'auth_token': self.random_string(25),
             'auth_secret': self.random_string(25),
         }

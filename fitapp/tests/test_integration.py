@@ -166,10 +166,9 @@ class TestCompleteView(FitappTestBase):
     @patch('fitapp.tasks.get_time_series_data.apply_async')
     def test_get(self, tsd_apply_async, sub_apply_async):
         """Complete view should fetch & store user's access credentials."""
-        UserFitbit.objects.all().delete()
         response = self._mock_client()
         self.assertRedirectsNoFollow(
-        	 response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+             response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         fbuser = UserFitbit.objects.get()
         sub_apply_async.assert_called_once_with(
             (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
@@ -183,6 +182,24 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(fbuser.auth_token, self.resource_owner_key)
         self.assertEqual(fbuser.auth_secret, self.resource_owner_secret)
         self.assertEqual(fbuser.fitbit_user, self.user_id)
+
+    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_get(self, tsd_apply_async, sub_apply_async):
+        """
+        Complete view redirect to the error view if a user attempts to connect
+        an already integrated fitbit user to a second user.
+        """
+        self.create_userfitbit(user=self.user, fitbit_user=self.user_id)
+        username2 = '%s2' % self.username
+        user2 = self.create_user(username=username2, password=self.password)
+        self.client.logout()
+        self.client.login(username=username2, password=self.password)
+        response = self._mock_client()
+        self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
+        self.assertEqual(UserFitbit.objects.all().count(), 1)
+        self.assertEqual(sub_apply_async.call_count, 0)
+        self.assertEqual(tsd_apply_async.call_count, 0)
 
     def test_unauthenticated(self):
         """User must be logged in to access Complete view."""

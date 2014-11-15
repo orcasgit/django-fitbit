@@ -89,6 +89,10 @@ def complete(request):
         fb.client.fetch_access_token(verifier, token=token)
     except:
         return redirect(reverse('fitbit-error'))
+
+    if UserFitbit.objects.filter(fitbit_user=fb.client.user_id).exists():
+        return redirect(reverse('fitbit-error'))
+
     fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
     fbuser.auth_token = fb.client.resource_owner_key
     fbuser.auth_secret = fb.client.resource_owner_secret

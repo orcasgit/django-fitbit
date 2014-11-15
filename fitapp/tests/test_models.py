@@ -1,4 +1,5 @@
 from fitapp.models import UserFitbit, TimeSeriesDataType
+from django.db import IntegrityError
 
 from .base import FitappTestBase
 
@@ -13,6 +14,13 @@ class TestFitappModels(FitappTestBase):
             'resource_owner_secret': self.fbuser.auth_secret,
             'user_id': self.fbuser.fitbit_user
         })
+
+        # Trying to create another UserFitbit with the same fitbit_user should
+        # result in an IntegrityError
+        user2 = self.create_user(
+            username='%s2' % self.username, password=self.password)
+        self.assertRaises(IntegrityError, self.create_userfitbit,
+                          user=user2, fitbit_user=self.fbuser.fitbit_user)
 
     def test_timeseriesdatatype(self):
         """ TimeSeriesDataTypes are created via fixtures. """

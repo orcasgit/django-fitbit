@@ -9,7 +9,7 @@ UserModel = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
 @python_2_unicode_compatible
 class UserFitbit(models.Model):
     user = models.OneToOneField(UserModel)
-    fitbit_user = models.CharField(max_length=32)
+    fitbit_user = models.CharField(max_length=32, unique=True)
     auth_token = models.TextField()
     auth_secret = models.TextField()
 
