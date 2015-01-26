@@ -10,10 +10,12 @@ FITAPP_LOGIN_REDIRECT = '/'
 # removed.
 FITAPP_LOGOUT_REDIRECT = '/'
 
+# By default, don't subscribe to user data. Set this to true to subscribe.
+FITAPP_SUBSCRIBE = False
+
 # The template to use when an unavoidable error occurs during Fitbit
 # integration.
 FITAPP_ERROR_TEMPLATE = 'fitapp/error.html'
-
 
 # The default message used by the fitbit_integration_warning decorator to
 # inform the user about Fitbit integration. If a callable is given, it is

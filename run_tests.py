@@ -28,6 +28,21 @@ if not settings.configured:
 
         FITAPP_CONSUMER_KEY='',
         FITAPP_CONSUMER_SECRET='',
+        FITAPP_SUBSCRIBE=True,
+        FITAPP_SUBSCRIBER_ID=1,
+
+        LOGGING = {
+            'version': 1,
+            'handlers': {
+                'null': {
+                    'level': 'DEBUG',
+                    'class': 'django.utils.log.NullHandler',
+                },
+            },
+            'loggers': {
+                'fitapp.tasks': {'handlers': ['null'], 'level': 'DEBUG'},
+            },
+        },
 
         MIDDLEWARE_CLASSES = (
             'django.contrib.sessions.middleware.SessionMiddleware',
@@ -65,7 +80,7 @@ def run_tests():
     if covlevel:
         cov.stop()
         cov.save()
-    
+
     sys.exit(exit_val)
 
 

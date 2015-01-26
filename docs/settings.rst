@@ -44,6 +44,30 @@ FITAPP_LOGOUT_REDIRECT
 The URL which to redirect the user to after removal of Fitbit account
 credentials, if no forwarding URL is given in the 'next' GET parameter.
 
+.. _FITAPP_SUBSCRIBE:
+
+FITAPP_SUBSCRIBE
+----------------
+
+:Default: ``False``
+
+When this setting is True, we will subscribe to user data. Fitbit will
+send notifications when the data changes and we will queue tasks to get
+the updated data. When requests for fitbit data are made to fitapp, we
+will always pull the latest data from our own database instead of getting
+it directly from Fitbit. To use this feature, you will need to setup a
+celery worker to handle the tasks. Following `celery's guide for Django<http://celery.readthedocs.org/en/latest/django/first-steps-with-django.html>`_ will get you started.
+
+
+.. _FITAPP_SUBSCRIBER_ID:
+
+FITAPP_SUBSCRIBER_ID
+--------------------
+
+This setting is only applicable if :ref:`FITAPP_SUBSCRIBE` is True. This is
+the unique ID of the subscriber endpoint that was set up for your Fitbit
+app on their developer site.
+
 .. _FITAPP_ERROR_TEMPLATE:
 
 FITAPP_ERROR_TEMPLATE

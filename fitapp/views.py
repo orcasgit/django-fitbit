@@ -1,17 +1,32 @@
 import json
 
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.signals import user_logged_in
+from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse
+from django.db import IntegrityError
+from django.dispatch import receiver
+from django.http import HttpResponse, Http404
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_POST
 
-from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPNotFound,
-        HTTPConflict, HTTPServerError, HTTPBadRequest)
+from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
+                               HTTPServerError)
 
 from . import forms
 from . import utils
-from .models import UserFitbit
+from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
+from .tasks import get_time_series_data, subscribe, unsubscribe
+
+try:
+    from types import StringType, UnicodeType
+    STRING_TYPES = [StringType, UnicodeType]
+except ImportError:  # Python 3
+    STRING_TYPES = [str]
 
 
 @login_required
@@ -58,6 +73,9 @@ def complete(request):
     redirected to the URL specified by the setting
     :ref:`FITAPP_LOGIN_REDIRECT`.
 
+    If :ref:`FITAPP_SUBSCRIBE` is set to True, add a subscription to user
+    data at this time.
+
     URL name:
         `fitbit-complete`
     """
@@ -71,14 +89,50 @@ def complete(request):
         fb.client.fetch_access_token(verifier, token=token)
     except:
         return redirect(reverse('fitbit-error'))
+
+    if UserFitbit.objects.filter(fitbit_user=fb.client.user_id).exists():
+        return redirect(reverse('fitbit-error'))
+
     fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
     fbuser.auth_token = fb.client.resource_owner_key
     fbuser.auth_secret = fb.client.resource_owner_secret
     fbuser.fitbit_user = fb.client.user_id
     fbuser.save()
+
+    # Add the Fitbit user info to the session
+    request.session['fitbit_profile'] = fb.user_profile_get()
+    if utils.get_setting('FITAPP_SUBSCRIBE'):
+        try:
+            SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
+        except ImproperlyConfigured:
+            return redirect(reverse('fitbit-error'))
+        subscribe.apply_async((fbuser.fitbit_user, SUBSCRIBER_ID), countdown=5)
+        # Create tasks for all data in all data types
+        for i, _type in enumerate(TimeSeriesDataType.objects.all()):
+            # Delay execution for a few seconds to speed up response
+            # Offset each call by 2 seconds so they don't bog down the server
+            get_time_series_data.apply_async(
+                (fbuser.fitbit_user, _type.category, _type.resource,),
+                countdown=10 + (i * 5))
+
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
-            'FITAPP_LOGIN_REDIRECT')
+        'FITAPP_LOGIN_REDIRECT')
     return redirect(next_url)
+
+
+@receiver(user_logged_in)
+def create_fitbit_session(sender, request, user, **kwargs):
+    """ If the user is a fitbit user, update the profile in the session. """
+
+    if user.is_authenticated() and utils.is_integrated(user) and \
+            user.is_active:
+        fbuser = UserFitbit.objects.filter(user=user)
+        if fbuser.exists():
+            fb = utils.create_fitbit(**fbuser[0].get_user_data())
+            try:
+                request.session['fitbit_profile'] = fb.user_profile_get()
+            except:
+                pass
 
 
 @login_required
@@ -118,19 +172,137 @@ def logout(request):
     URL name:
         `fitbit-logout`
     """
-    UserFitbit.objects.filter(user=request.user).delete()
+    user = request.user
+    try:
+        fbuser = user.userfitbit
+    except UserFitbit.DoesNotExist:
+        pass
+    else:
+        if utils.get_setting('FITAPP_SUBSCRIBE'):
+            try:
+                SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
+            except ImproperlyConfigured:
+                return redirect(reverse('fitbit-error'))
+            unsubscribe.apply_async(kwargs=fbuser.get_user_data(), countdown=5)
+        fbuser.delete()
     next_url = request.GET.get('next', None) or utils.get_setting(
-            'FITAPP_LOGOUT_REDIRECT')
+        'FITAPP_LOGOUT_REDIRECT')
     return redirect(next_url)
+
+
+@csrf_exempt
+def update(request):
+    """Receive notification from Fitbit.
+
+    Loop through the updates and create celery tasks to get the data.
+    More information here:
+    https://wiki.fitbit.com/display/API/Fitbit+Subscriptions+API
+
+    URL name:
+        `fitbit-update`
+    """
+
+    # The updates can come in two ways:
+    # 1. A json body in a POST request
+    # 2. A json file in a form POST
+    if request.method == 'POST':
+        try:
+            body = request.body
+            if request.FILES and 'updates' in request.FILES:
+                body = request.FILES['updates'].read()
+            updates = json.loads(body.decode('utf8'))
+            # Create a celery task for each data type in the update
+            for update in updates:
+                cat = getattr(TimeSeriesDataType, update['collectionType'])
+                resources = TimeSeriesDataType.objects.filter(category=cat)
+                for i, _type in enumerate(resources):
+                    # Offset each call by 2 seconds so they don't bog down the
+                    # server
+                    get_time_series_data.apply_async(
+                        (update['ownerId'], _type.category, _type.resource,),
+                        {'date': parser.parse(update['date'])},
+                        countdown=(2 * i))
+        except:
+            return redirect(reverse('fitbit-error'))
+
+        return HttpResponse(status=204)
+
+    # if someone enters the url into the browser, raise a 404
+    raise Http404
+
+
+def make_response(code=None, objects=[]):
+    """AJAX helper method to generate a response"""
+
+    data = {
+        'meta': {'total_count': len(objects), 'status_code': code},
+        'objects': objects,
+    }
+    return HttpResponse(json.dumps(data))
+
+
+def normalize_date_range(request, fitbit_data):
+    """Prepare a fitbit date range for django database access. """
+
+    result = {}
+    base_date = fitbit_data['base_date']
+    if base_date == 'today':
+        now = timezone.now()
+        if 'fitbit_profile' in request.session.keys():
+            tz = request.session['fitbit_profile']['user']['timezone']
+            now = timezone.pytz.timezone(tz).normalize(timezone.now())
+        base_date = now.date().strftime('%Y-%m-%d')
+    result['date__gte'] = base_date
+
+    if 'end_date' in fitbit_data.keys():
+        result['date__lte'] = fitbit_data['end_date']
+    else:
+        period = fitbit_data['period']
+        if period != 'max':
+            if type(base_date) in STRING_TYPES:
+                start = parser.parse(base_date)
+            else:
+                start = base_date
+            if 'y' in period:
+                kwargs = {'years': int(period.replace('y', ''))}
+            elif 'm' in period:
+                kwargs = {'months': int(period.replace('m', ''))}
+            elif 'w' in period:
+                kwargs = {'weeks': int(period.replace('w', ''))}
+            elif 'd' in period:
+                kwargs = {'days': int(period.replace('d', ''))}
+            end_date = start + relativedelta(**kwargs)
+            result['date__lte'] = end_date.strftime('%Y-%m-%d')
+
+    return result
 
 
 @require_GET
 def get_steps(request):
-    """An AJAX view that retrieves this user's steps data from Fitbit.
+    """An AJAX view that retrieves this user's step data from Fitbit.
+
+    This view has been deprecated. Use `get_data` instead.
+
+    URL name:
+        `fitbit-steps`
+    """
+
+    return get_data(request, 'activities', 'steps')
+
+
+@require_GET
+def get_data(request, category, resource):
+    """An AJAX view that retrieves this user's data from Fitbit.
 
     This view may only be retrieved through a GET request. The view can
     retrieve data from either a range of dates, with specific start and end
     days, or from a time period ending on a specific date.
+
+    The two parameters, category and resource, determine which type of data
+    to retrieve. The category parameter can be one of: foods, activities,
+    sleep, and body. It's the first part of the path in the items listed at
+    https://wiki.fitbit.com/display/API/API-Get-Time-Series
+    The resource parameter should be the rest of the path.
 
     To retrieve a specific time period, two GET parameters are used:
 
@@ -148,12 +320,12 @@ def get_steps(request):
 
     The response body contains a JSON-encoded map with two items:
 
-        :objects: an ordered list (from oldest to newest) of daily steps data
+        :objects: an ordered list (from oldest to newest) of daily data
             for the requested period. Each day is of the format::
 
                {'dateTime': 'yyyy-mm-dd', 'value': 123}
 
-           where the user took *value* steps on *dateTime*.
+           where the user has *value* on *dateTime*.
         :meta: a map containing two things: the *total_count* of objects, and
             the *status_code* of the response.
 
@@ -162,7 +334,7 @@ def get_steps(request):
     with this call. For each type of error, we return an empty data list with
     a *status_code* to describe what went wrong on our end:
 
-        :100: OK - Response contains JSON steps data.
+        :100: OK - Response contains JSON data.
         :101: User is not logged in.
         :102: User is not integrated with Fitbit.
         :103: Fitbit authentication credentials are invalid and have been
@@ -178,21 +350,21 @@ def get_steps(request):
     <https://wiki.fitbit.com/display/API/API-Get-Time-Series>`_.
 
     URL name:
-        `fitbit-steps`
+        `fitbit-data`
     """
-    def make_response(code=None, steps=None):
-        steps = steps or []
-        data = {
-            'meta': {'total_count': len(steps), 'status_code': code},
-            'objects': steps,
-        }
-        return HttpResponse(json.dumps(data))
 
     # Manually check that user is logged in and integrated with Fitbit.
     user = request.user
+    try:
+        resource_type = TimeSeriesDataType.objects.get(
+            category=getattr(TimeSeriesDataType, category), resource=resource)
+    except:
+        return make_response(104)
+
+    fitapp_subscribe = utils.get_setting('FITAPP_SUBSCRIBE')
     if not user.is_authenticated() or not user.is_active:
         return make_response(101)
-    if not utils.is_integrated(user):
+    if not fitapp_subscribe and not utils.is_integrated(user):
         return make_response(102)
 
     base_date = request.GET.get('base_date', None)
@@ -210,10 +382,19 @@ def get_steps(request):
     if not fitbit_data:
         return make_response(104)
 
-    # Request steps data through the API and handle related errors.
+    if fitapp_subscribe:
+        # Get the data directly from the database.
+        date_range = normalize_date_range(request, fitbit_data)
+        existing_data = TimeSeriesData.objects.filter(
+            user=user, resource_type=resource_type, **date_range)
+        simplified_data = [{'value': d.value, 'dateTime': d.string_date()}
+                           for d in existing_data]
+        return make_response(100, simplified_data)
+
+    # Request data through the API and handle related errors.
     fbuser = UserFitbit.objects.get(user=user)
     try:
-        steps = utils.get_fitbit_steps(fbuser, **fitbit_data)
+        data = utils.get_fitbit_data(fbuser, resource_type, **fitbit_data)
     except (HTTPUnauthorized, HTTPForbidden):
         # Delete invalid credentials.
         fbuser.delete()
@@ -228,4 +409,4 @@ def get_steps(request):
         # send a 500 and check it out.
         raise
 
-    return make_response(100, steps)
+    return make_response(100, data)
