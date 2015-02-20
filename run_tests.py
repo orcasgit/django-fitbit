@@ -36,7 +36,9 @@ if not settings.configured:
             'handlers': {
                 'null': {
                     'level': 'DEBUG',
-                    'class': 'django.utils.log.NullHandler',
+                    'class': '%s.NullHandler' % (
+                        'logging' if sys.version_info[0:2] > (2,6)
+                        else 'django.utils.log'),
                 },
             },
             'loggers': {
