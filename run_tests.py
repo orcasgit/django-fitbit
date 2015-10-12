@@ -46,6 +46,13 @@ if not settings.configured:
             },
         },
 
+        TEMPLATES=[
+            {
+                'BACKEND': 'django.template.backends.django.DjangoTemplates',
+                'APP_DIRS': True
+            },
+        ],
+
         MIDDLEWARE_CLASSES = (
             'django.contrib.sessions.middleware.SessionMiddleware',
             'django.contrib.auth.middleware.AuthenticationMiddleware',

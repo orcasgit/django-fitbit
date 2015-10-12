@@ -1,4 +1,5 @@
 from mock import patch, Mock
+import django
 import random
 try:
     from urllib.parse import urlencode
@@ -96,7 +97,9 @@ class FitappTestBase(TestCase):
         loading the page at that URL.
         """
         self.assertEqual(response.status_code, status_code)
-        full_url = self.TEST_SERVER + url
+        full_url = url
+        if django.VERSION < (1, 9):
+            full_url = self.TEST_SERVER + url
         self.assertEqual(response._headers['location'][1], full_url)
 
     def _get(self, url_name=None, url_kwargs=None, get_kwargs=None, **kwargs):

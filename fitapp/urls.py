@@ -1,10 +1,9 @@
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from . import views
 
 
-urlpatterns = patterns('',
-
+urlpatterns = [
     # OAuth authentication
     url(r'^login/$',
             views.login, name='fitbit-login'),
@@ -23,4 +22,4 @@ urlpatterns = patterns('',
     url(r'^get_data/(?P<category>[\w]+)/(?P<resource>[/\w]+)/$',
             views.get_data, name='fitbit-data'),
     url(r'^get_steps/$', views.get_steps, name='fitbit-steps')
-)
+]
