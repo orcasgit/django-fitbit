@@ -5,7 +5,7 @@ from celery import shared_task
 from celery.exceptions import Ignore, Reject
 from dateutil import parser
 from django.core.cache import cache
-from fitbit.exceptions import HTTPTooManyRequests
+from fitbit.exceptions import HTTPBadRequest, HTTPTooManyRequests
 
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
@@ -89,6 +89,14 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
         logger.debug('Rate limit reached, will try again in %s seconds' %
                      e.retry_after_secs)
         raise get_time_series_data.retry(e, countdown=e.retry_after_secs)
+    except HTTPBadRequest:
+        # If the resource is elevation or floors, we are just getting this
+        # error because the data doesn't exist for this user, so we can ignore
+        # the error
+        if not ('elevation' in resource or 'floors' in resource):
+            exc = sys.exc_info()[1]
+            logger.exception("Exception updating data: %s" % exc)
+            raise Reject(exc, requeue=False)            
     except Exception:
         exc = sys.exc_info()[1]
         logger.exception("Exception updating data: %s" % exc)
