@@ -179,20 +179,37 @@ class TestRetrievalTask(FitappTestBase):
         self.assertEqual(TimeSeriesData.objects.count(), 0)
 
     @patch('fitapp.utils.get_fitbit_data')
-    @patch('fitapp.tasks.get_time_series_data.retry')
-    def test_subscription_update_too_many(self, mock_retry, get_fitbit_data):
+    def test_subscription_update_too_many(self, get_fitbit_data):
         # Check that celery tasks get postponed if the rate limit is hit
-        mock_retry.return_value = celery.exceptions.Retry()
+        cat_id = getattr(TimeSeriesDataType, self.category)
+        _type = TimeSeriesDataType.objects.filter(category=cat_id)[0]
+        lock_id = 'fitapp.tasks-lock-{0}-{1}-{2}'.format(
+            self.fbuser.fitbit_user, _type, self.date)
         exc = fitbit_exceptions.HTTPTooManyRequests(self._error_response())
         exc.retry_after_secs = 21
-        get_fitbit_data.side_effect = exc
+        def side_effect(*args, **kwargs):
+            # Delete the cache lock after the first try and adjust the
+            # get_fitbit_data mock to be successful
+            cache.delete(lock_id)
+            get_fitbit_data.side_effect = None
+            get_fitbit_data.return_value = [{
+                'dateTime': self.date,
+                'value': '34'
+            }]
+            raise exc
+        get_fitbit_data.side_effect = side_effect
         category = getattr(TimeSeriesDataType, self.category)
         resources = TimeSeriesDataType.objects.filter(category=category)
         self.assertEqual(TimeSeriesData.objects.count(), 0)
-        self._receive_fitbit_updates()
-        self.assertEqual(get_fitbit_data.call_count, resources.count())
-        self.assertEqual(TimeSeriesData.objects.count(), 0)
-        mock_retry.assert_called_with(exc, countdown=21)
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+        result.get()
+        # Since celery is in eager mode, we expect a Retry exception first
+        # and then a second task execution that is successful
+        self.assertEqual(get_fitbit_data.call_count, 2)
+        self.assertEqual(TimeSeriesData.objects.count(), 1)
+        self.assertEqual(TimeSeriesData.objects.get().value, '34')
 
     def test_problem_queueing_task(self):
         get_time_series_data = MagicMock()
