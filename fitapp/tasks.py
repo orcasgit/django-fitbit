@@ -88,7 +88,7 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
         e = sys.exc_info()[1]
         logger.debug('Rate limit reached, will try again in %s seconds' %
                      e.retry_after_secs)
-        raise get_time_series_data.retry(e, countdown=e.retry_after_secs)
+        raise get_time_series_data.retry(exc=e, countdown=e.retry_after_secs)
     except HTTPBadRequest:
         # If the resource is elevation or floors, we are just getting this
         # error because the data doesn't exist for this user, so we can ignore
@@ -96,7 +96,7 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
         if not ('elevation' in resource or 'floors' in resource):
             exc = sys.exc_info()[1]
             logger.exception("Exception updating data: %s" % exc)
-            raise Reject(exc, requeue=False)            
+            raise Reject(exc, requeue=False)
     except Exception:
         exc = sys.exc_info()[1]
         logger.exception("Exception updating data: %s" % exc)
