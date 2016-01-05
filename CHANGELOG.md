@@ -1,3 +1,9 @@
+0.1.2
+=====
+
+- Enable fitbit subscriber verification
+- Better error handling in celery tasks
+
 0.1.1
 =====
 
