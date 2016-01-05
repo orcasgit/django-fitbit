@@ -89,6 +89,7 @@ def run_tests():
     if covlevel:
         cov.stop()
         cov.save()
+        cov.html_report()
 
     sys.exit(exit_val)
 

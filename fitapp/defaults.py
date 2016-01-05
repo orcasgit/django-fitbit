@@ -3,6 +3,9 @@
 FITAPP_CONSUMER_KEY = None
 FITAPP_CONSUMER_SECRET = None
 
+# The verification code for verifying subscriber endpoints
+FITAPP_VERIFICATION_CODE = None
+
 # Where to redirect to after Fitbit authentication is successfully completed.
 FITAPP_LOGIN_REDIRECT = '/'
 
