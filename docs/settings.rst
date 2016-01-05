@@ -32,7 +32,7 @@ subscriber endpoints
 <https://dev.fitbit.com/docs/subscriptions/#verify-a-subscriber>`_. This is
 optional, and is only needed if you plan on subscribing to user data updates. To
 use this feature, add a subscriber using the
-`Fitbit developer interface<https://dev.fitbit.com/apps>`_. Fitbit will
+`Fitbit developer interface <https://dev.fitbit.com/apps>`_. Fitbit will
 provide you with a verification code to use here. Once you have deployed the
 code, you can click "Verify" on Fitbit to verify it. We recommend you keep this
 verification code in place as long as you are using the subscriber so that if
@@ -70,7 +70,9 @@ send notifications when the data changes and we will queue tasks to get
 the updated data. When requests for fitbit data are made to fitapp, we
 will always pull the latest data from our own database instead of getting
 it directly from Fitbit. To use this feature, you will need to setup a
-celery worker to handle the tasks. Following `celery's guide for Django<http://celery.readthedocs.org/en/latest/django/first-steps-with-django.html>`_ will get you started.
+celery worker to handle the tasks. Following `celery's guide for Django
+<http://celery.readthedocs.org/en/latest/django/first-steps-with-django.html>`_
+will get you started.
 
 
 .. _FITAPP_SUBSCRIBER_ID:
