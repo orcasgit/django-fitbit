@@ -32,7 +32,7 @@ subscriber endpoints
 <https://dev.fitbit.com/docs/subscriptions/#verify-a-subscriber>`_. This is
 optional, and is only needed if you plan on subscribing to user data updates. To
 use this feature, add a subscriber using the
-`Fitbit developer interface<https://dev.fitbit.com/apps>`. Fitbit will
+`Fitbit developer interface<https://dev.fitbit.com/apps>`_. Fitbit will
 provide you with a verification code to use here. Once you have deployed the
 code, you can click "Verify" on Fitbit to verify it. We recommend you keep this
 verification code in place as long as you are using the subscriber so that if
