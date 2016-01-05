@@ -1,4 +1,4 @@
-import json
+import simplejson as json
 
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
@@ -13,6 +13,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
+from six import string_types
 
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
                                HTTPServerError)
@@ -21,12 +22,6 @@ from . import forms
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
 from .tasks import get_time_series_data, subscribe, unsubscribe
-
-try:
-    from types import StringType, UnicodeType
-    STRING_TYPES = [StringType, UnicodeType]
-except ImportError:  # Python 3
-    STRING_TYPES = [str]
 
 
 @login_required
@@ -192,11 +187,20 @@ def logout(request):
 
 @csrf_exempt
 def update(request):
-    """Receive notification from Fitbit.
+    """Receive notification from Fitbit or verify subscriber endpoint.
 
     Loop through the updates and create celery tasks to get the data.
     More information here:
     https://wiki.fitbit.com/display/API/Fitbit+Subscriptions+API
+
+    For verification, we expect two GET requests:
+    1. Contains a verify query param containing the verification code we
+       have specified in the ``FITAPP_VERIFICATION_CODE`` setting. We should
+       respond with a HTTP 204 code.
+    2. Contains a verify query param containing a purposefully invalid
+       verification code. We should respond with a 404
+    More information here:
+    https://dev.fitbit.com/docs/subscriptions/#verify-a-subscriber
 
     URL name:
         `fitbit-update`
@@ -211,6 +215,10 @@ def update(request):
             if request.FILES and 'updates' in request.FILES:
                 body = request.FILES['updates'].read()
             updates = json.loads(body.decode('utf8'))
+        except json.JSONDecodeError:
+            raise Http404
+
+        try:
             # Create a celery task for each data type in the update
             for update in updates:
                 cat = getattr(TimeSeriesDataType, update['collectionType'])
@@ -222,10 +230,16 @@ def update(request):
                         (update['ownerId'], _type.category, _type.resource,),
                         {'date': parser.parse(update['date'])},
                         countdown=(2 * i))
-        except:
-            return redirect(reverse('fitbit-error'))
+        except (KeyError, ValueError, OverflowError):
+            raise Http404
 
         return HttpResponse(status=204)
+    elif request.method == 'GET':
+        # Verify fitbit subscriber endpoints
+        verification_code = utils.get_setting('FITAPP_VERIFICATION_CODE')
+        verify = request.GET.get('verify', None)
+        if verify and verify == verification_code:
+            return HttpResponse(status=204)
 
     # if someone enters the url into the browser, raise a 404
     raise Http404
@@ -259,7 +273,7 @@ def normalize_date_range(request, fitbit_data):
     else:
         period = fitbit_data['period']
         if period != 'max':
-            if type(base_date) in STRING_TYPES:
+            if isinstance(base_date, string_types):
                 start = parser.parse(base_date)
             else:
                 start = base_date

@@ -1,2 +1,4 @@
 fitbit>=0.1.2
 celery>=3.1.13
+simplejson
+six
