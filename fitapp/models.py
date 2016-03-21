@@ -12,15 +12,16 @@ class UserFitbit(models.Model):
     fitbit_user = models.CharField(max_length=32, unique=True)
     auth_token = models.TextField()
     auth_secret = models.TextField()
+    refresh_token = models.TextField()
 
     def __str__(self):
         return self.user.__str__()
 
     def get_user_data(self):
         return {
-            'resource_owner_key': self.auth_token,
-            'resource_owner_secret': self.auth_secret,
             'user_id': self.fitbit_user,
+            'access_token': self.auth_token,
+            'refresh_token': self.refresh_token
         }
 
 

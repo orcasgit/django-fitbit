@@ -9,7 +9,7 @@ Settings
 FITAPP_CONSUMER_KEY
 -------------------
 
-The key assigned to your app by Fitbit when you register your app at
+The OAuth 2.0 client id assigned to your app by Fitbit when you register your app at
 `the Fitbit developer site <http://dev.fitbit.com/>`_. You must specify a
 non-null value for this setting.
 
