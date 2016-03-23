@@ -1,4 +1,4 @@
--e git+https://github.com/orcasgit/python-fitbit.git@oauth2-support-only#egg=fitbit
+fitbit>=0.2
 celery>=3.1.13
 simplejson
 six

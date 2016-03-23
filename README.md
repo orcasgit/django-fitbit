@@ -8,4 +8,19 @@ site.
 It handles the details of getting your app authorized to access your user's
 Fitbit data via the Fitbit web API.
 
+Getting Help
+============
+
 Documentation is hosted on <http://django-fitbit.readthedocs.org>.
+
+This app is available on `PyPI`_ and can be installed with ``pip install
+django-fitbit``.
+
+.. _PyPI: https://pypi.python.org/pypi/django-fitbit/
+
+Contributing
+============
+
+See the `contributing docs`_.
+
+.. _contributing docs: https://github.com/orcasgit/django-fitbit/blob/master/docs/index.rst

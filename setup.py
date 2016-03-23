@@ -1,9 +1,6 @@
 from setuptools import setup, find_packages
 
-
-def find_install_requires():
-    return [line for line in open('requirements/base.txt').read().split("\n")
-            if not line.startswith('-e')]
+required = [line for line in open('requirements/base.txt').read().split("\n")]
 
 setup(
     name="django-fitbit",
@@ -11,10 +8,7 @@ setup(
     author="orcas",
     author_email="",
     packages=find_packages(),
-    install_requires=["setuptools"] + find_install_requires(),
-    dependency_links=[
-        "git+ssh://git@github.com/orcasgit/python-fitbit.git@oauth2-support-only#egg=fitbit"
-    ],
+    install_requires=["setuptools"] + required,
     include_package_data=True,
     url="https://github.com/orcasgit/django-fitbit/",
     license="",
