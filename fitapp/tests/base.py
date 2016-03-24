@@ -19,26 +19,30 @@ from fitapp.models import UserFitbit
 
 
 class MockClient(object):
-
     def __init__(self, **kwargs):
         self.user_id = kwargs.get('user_id', None)
-        self.resource_owner_key = kwargs.get('resource_owner_key', None)
-        self.resource_owner_secret = kwargs.get('resource_owner_secret', None)
+        self.client_id = kwargs.get('client_id', 'ID12345')
+        self.client_secret = kwargs.get('client_secret', 'S12345Secret')
+        self.access_token = kwargs.get('access_token', None)
+        self.refresh_token = kwargs.get('refresh_token', None)
         self.error = kwargs.get('error', None)
 
     def authorize_token_url(self, *args, **kwargs):
-        return '/test'
-
-    def fetch_request_token(self, *args, **kwargs):
-        return None
+        return ('/complete/', '12345')
 
     def fetch_access_token(self, *args, **kwargs):
         if self.error:
             raise self.error('')
-        return {
-            'resource_owner_key': self.resource_owner_key,
-            'resource_owner_secret': self.resource_owner_secret
+
+        token = {
+            'user_id': self.user_id,
+            'refresh_token': self.refresh_token,
+            'token_type': 'Bearer',
+            'scope': ['weight', 'sleep', 'heartrate', 'activity']
         }
+        if self.access_token:
+            token.update({'access_token': self.access_token})
+        return token
 
     def make_request(self, *args, **kwargs):
         response = Mock()
@@ -77,8 +81,9 @@ class FitappTestBase(TestCase):
         defaults = {
             'user': kwargs.pop('user', self.create_user()),
             'fitbit_user': kwargs.pop('fitbit_user', self.random_string(25)),
-            'auth_token': self.random_string(25),
+            'access_token': self.random_string(25),
             'auth_secret': self.random_string(25),
+            'refresh_token': self.random_string(25)
         }
         defaults.update(kwargs)
         return UserFitbit.objects.create(**defaults)
@@ -110,7 +115,6 @@ class FitappTestBase(TestCase):
         # Add GET parameters.
         if get_kwargs:
             url += '?' + urlencode(get_kwargs)
-
         return self.client.get(url, **kwargs)
 
     def _set_session_vars(self, **kwargs):
@@ -127,7 +131,7 @@ class FitappTestBase(TestCase):
         error_response.content = '{"errors": []}'.encode('utf8')
         return error_response
 
-    @patch('fitbit.api.FitbitOauthClient')
+    @patch('fitbit.api.FitbitOauth2Client')
     def _mock_client(self, client=None, client_kwargs=None, **kwargs):
         client_kwargs = client_kwargs or {}
         client.return_value = MockClient(**client_kwargs)

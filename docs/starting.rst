@@ -25,7 +25,7 @@ Getting started
 4. Add settings for :ref:`FITAPP_CONSUMER_KEY` and
    :ref:`FITAPP_CONSUMER_SECRET`::
 
-    FITAPP_CONSUMER_KEY = 'abcdefg123456'
+    FITAPP_CONSUMER_KEY = '9898XH'
     FITAPP_CONSUMER_SECRET = 'abcdefg123456'
 
 5. If you need to change the defaults, add settings for

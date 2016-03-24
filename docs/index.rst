@@ -25,6 +25,23 @@ site.
 It handles the details of getting your app authorized to access your user's
 Fitbit data via the Fitbit web API.
 
+Testing
+=======
+
+Please add tests for any changes you submit.
+
+To install all the requirements for running the tests::
+
+    pip install -r requirements/dev.txt
+
+To run the tests for specific python version (ie. py27-1.8.X)::
+
+    tox -e py27-1.8.X
+
+If you would like to run specific test you can bypass tox altogether and run::
+
+    python -m run_tests fitapp.tests.test_integration.TestLoginView.test_unauthenticated
+
 Indices and tables
 ==================
 

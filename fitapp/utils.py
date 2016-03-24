@@ -19,9 +19,11 @@ def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
         consumer_secret = get_setting('FITAPP_CONSUMER_SECRET')
 
     if consumer_key is None or consumer_secret is None:
-        raise ImproperlyConfigured("Consumer key and consumer secret cannot "
-                "be null, and must be explicitly specified or set in your "
-                "Django settings")
+        raise ImproperlyConfigured(
+            "Consumer key and consumer secret cannot "
+            "be null, and must be explicitly specified or set in your "
+            "Django settings"
+        )
 
     return Fitbit(consumer_key, consumer_secret, **kwargs)
 
@@ -44,7 +46,7 @@ def get_valid_periods():
 
 
 def get_fitbit_data(fbuser, resource_type, base_date=None, period=None,
-        end_date=None):
+                    end_date=None):
     """Creates a Fitbit API instance and retrieves step data for the period.
 
     Several exceptions may be thrown:

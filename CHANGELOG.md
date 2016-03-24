@@ -1,3 +1,9 @@
+0.2.0 (2016-03-23)
+==================
+
+- Integrate with python-fitbit OAuth2 (fitbit==0.2)
+- Update documentation to state that `FITAPP_CONSUMER_KEY` should be the OAuth 2.0 client id
+
 0.1.2
 =====
 

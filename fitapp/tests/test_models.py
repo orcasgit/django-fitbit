@@ -1,4 +1,4 @@
-from fitapp.models import UserFitbit, TimeSeriesDataType
+from fitapp.models import TimeSeriesDataType
 from django.db import IntegrityError
 
 from .base import FitappTestBase
@@ -10,8 +10,8 @@ class TestFitappModels(FitappTestBase):
         self.assertEqual(self.fbuser.user, self.user)
         self.assertEqual(self.fbuser.__str__(), self.username)
         self.assertEqual(self.fbuser.get_user_data(), {
-            'resource_owner_key': self.fbuser.auth_token,
-            'resource_owner_secret': self.fbuser.auth_secret,
+            'access_token': self.fbuser.access_token,
+            'refresh_token': self.fbuser.refresh_token,
             'user_id': self.fbuser.fitbit_user
         })
 

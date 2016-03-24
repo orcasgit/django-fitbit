@@ -6,13 +6,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
-from django.db import IntegrityError
 from django.dispatch import receiver
 from django.http import HttpResponse, Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET
 from six import string_types
 
 from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
@@ -48,9 +47,8 @@ def login(request):
 
     callback_uri = request.build_absolute_uri(reverse('fitbit-complete'))
     fb = utils.create_fitbit(callback_uri=callback_uri)
-    token = fb.client.fetch_request_token()
-    token_url = fb.client.authorize_token_url()
-    request.session['token'] = token
+    token_url, code = fb.client.authorize_token_url(redirect_uri=callback_uri)
+
     return redirect(token_url)
 
 
@@ -74,24 +72,27 @@ def complete(request):
     URL name:
         `fitbit-complete`
     """
-    fb = utils.create_fitbit()
     try:
-        token = request.session.pop('token')
-        verifier = request.GET.get('oauth_verifier')
+        code = request.GET['code']
     except KeyError:
         return redirect(reverse('fitbit-error'))
+
+    callback_uri = request.build_absolute_uri(reverse('fitbit-complete'))
+    fb = utils.create_fitbit(callback_uri=callback_uri)
     try:
-        fb.client.fetch_access_token(verifier, token=token)
-    except:
+        token = fb.client.fetch_access_token(code, callback_uri)
+        access_token = token['access_token']
+        fitbit_user = token['user_id']
+    except KeyError:
         return redirect(reverse('fitbit-error'))
 
-    if UserFitbit.objects.filter(fitbit_user=fb.client.user_id).exists():
+    if UserFitbit.objects.filter(fitbit_user=fitbit_user).exists():
         return redirect(reverse('fitbit-error'))
 
     fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
-    fbuser.auth_token = fb.client.resource_owner_key
-    fbuser.auth_secret = fb.client.resource_owner_secret
-    fbuser.fitbit_user = fb.client.user_id
+    fbuser.access_token = access_token
+    fbuser.fitbit_user = fitbit_user
+    fbuser.refresh_token = token['refresh_token']
     fbuser.save()
 
     # Add the Fitbit user info to the session

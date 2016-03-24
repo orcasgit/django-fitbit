@@ -4,7 +4,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from fitbit.exceptions import HTTPConflict
-from mock import MagicMock, patch
+from mock import patch
 
 from fitapp import utils
 from fitapp.decorators import fitbit_integration_warning
@@ -21,7 +21,7 @@ class TestIntegrationUtility(FitappTestBase):
         self.assertTrue(utils.is_integrated(self.user))
 
     def test_is_not_integrated(self):
-        """User is not integrated if we have no OAuth data for them."""
+        """User is not integrated if we have no OAuth data for them"""
         UserFitbit.objects.all().delete()
         self.assertFalse(utils.is_integrated(self.user))
 
@@ -46,7 +46,7 @@ class TestIntegrationDecorator(FitappTestBase):
 
         with patch.object(messages, 'error', mock_error) as error:
             return fitbit_integration_warning(msg=msg)(self.fake_view)(
-                    self.fake_request)
+                self.fake_request)
 
     def test_unauthenticated(self):
         """Message should be added if user is not logged in."""
@@ -55,8 +55,8 @@ class TestIntegrationDecorator(FitappTestBase):
 
         self.assertEqual(results, "hello")
         self.assertEqual(len(self.messages), 1)
-        self.assertEqual(self.messages[0],
-                utils.get_setting('FITAPP_DECORATOR_MESSAGE'))
+        self.assertEqual(
+            self.messages[0], utils.get_setting('FITAPP_DECORATOR_MESSAGE'))
 
     def test_is_integrated(self):
         """Decorator should have no effect if user is integrated."""
@@ -72,8 +72,8 @@ class TestIntegrationDecorator(FitappTestBase):
 
         self.assertEqual(results, "hello")
         self.assertEqual(len(self.messages), 1)
-        self.assertEqual(self.messages[0],
-                utils.get_setting('FITAPP_DECORATOR_MESSAGE'))
+        self.assertEqual(
+            self.messages[0], utils.get_setting('FITAPP_DECORATOR_MESSAGE'))
 
     def test_custom_msg(self):
         """Decorator should support a custom message string."""
@@ -101,12 +101,12 @@ class TestLoginView(FitappTestBase):
 
     def test_get(self):
         """
-        Login view should generate & store a request token then
+        Login view should generate a token_url and then
         redirect to an authorization URL.
         """
         response = self._mock_client()
-        self.assertRedirectsNoFollow(response, '/test')
-        self.assertTrue('token' in self.client.session)
+        self.assertRedirectsNoFollow(response, '/complete/')
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(UserFitbit.objects.count(), 1)
 
     def test_unauthenticated(self):
@@ -120,55 +120,38 @@ class TestLoginView(FitappTestBase):
         """Fitbit credentials not required to access Login view."""
         self.fbuser.delete()
         response = self._mock_client()
-        self.assertRedirectsNoFollow(response, '/test')
-        self.assertTrue('token' in self.client.session)
+        self.assertRedirectsNoFollow(response, '/complete/')
         self.assertEqual(UserFitbit.objects.count(), 0)
 
     def test_next(self):
         response = self._mock_client(get_kwargs={'next': '/next'})
-        self.assertRedirectsNoFollow(response, '/test')
-        self.assertEqual(self.client.session.get('fitbit_next', None),
-                '/next')
+        self.assertRedirectsNoFollow(response, '/complete/')
+        self.assertEqual(self.client.session.get('fitbit_next', None), '/next')
         self.assertEqual(UserFitbit.objects.count(), 1)
 
 
 class TestCompleteView(FitappTestBase):
     url_name = 'fitbit-complete'
-    resource_owner_key = 'abc'
-    resource_owner_secret = '123'
     user_id = 'userid'
+    token = {
+        'access_token': 'AccessToken123',
+        'refresh_token': 'RefreshToken123',
+        'user_id': user_id
+    }
+    code = 'Code123'
 
     def setUp(self):
         super(TestCompleteView, self).setUp()
         self.fbuser.delete()
 
-    def _get(self, use_token=True, use_verifier=True, **kwargs):
-        if use_token:
-            self._set_session_vars(token='token')
-        get_kwargs = kwargs.pop('get_kwargs', {})
-        if use_verifier:
-            get_kwargs.update({'oauth_verifier': 'hello'})
-        return super(TestCompleteView, self)._get(get_kwargs=get_kwargs,
-                **kwargs)
-
-    def _mock_client(self, client_kwargs=None, **kwargs):
-        client_kwargs = client_kwargs or {}
-        defaults = {
-            'resource_owner_key': self.resource_owner_key,
-            'resource_owner_secret': self.resource_owner_secret,
-            'user_id': self.user_id,
-        }
-        defaults.update(client_kwargs)
-        return super(TestCompleteView, self)._mock_client(
-                client_kwargs=defaults, **kwargs)
-
     @patch('fitapp.tasks.subscribe.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')
-    def test_get(self, tsd_apply_async, sub_apply_async):
+    def test_complete(self, tsd_apply_async, sub_apply_async):
         """Complete view should fetch & store user's access credentials."""
-        response = self._mock_client()
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
         self.assertRedirectsNoFollow(
-             response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         fbuser = UserFitbit.objects.get()
         sub_apply_async.assert_called_once_with(
             (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
@@ -179,23 +162,24 @@ class TestCompleteView(FitappTestBase):
                 (fbuser.fitbit_user, _type.category, _type.resource,),
                 countdown=10 + (i * 5))
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.resource_owner_key)
-        self.assertEqual(fbuser.auth_secret, self.resource_owner_secret)
+        self.assertEqual(fbuser.access_token, self.token['access_token'])
+        self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
 
     @patch('fitapp.tasks.subscribe.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')
-    def test_get(self, tsd_apply_async, sub_apply_async):
+    def test_complete_already_integrated(self, tsd_apply_async, sub_apply_async):
         """
         Complete view redirect to the error view if a user attempts to connect
         an already integrated fitbit user to a second user.
         """
         self.create_userfitbit(user=self.user, fitbit_user=self.user_id)
-        username2 = '%s2' % self.username
-        user2 = self.create_user(username=username2, password=self.password)
+        username = '{0}2'.format(self.username)
+        self.create_user(username=username, password=self.password)
         self.client.logout()
-        self.client.login(username=username2, password=self.password)
-        response = self._mock_client()
+        self.client.login(username=username, password=self.password)
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
         self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEqual(UserFitbit.objects.all().count(), 1)
         self.assertEqual(sub_apply_async.call_count, 0)
@@ -215,16 +199,17 @@ class TestCompleteView(FitappTestBase):
         Complete view should redirect to session['fitbit_next'] if available.
         """
         self._set_session_vars(fitbit_next='/test')
-        response = self._mock_client()
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
         self.assertRedirectsNoFollow(response, '/test')
         fbuser = UserFitbit.objects.get()
         sub_apply_async.assert_called_once_with(
             (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
-        self.assertEqual(tsd_apply_async.call_count,
-                         TimeSeriesDataType.objects.count())
+        self.assertEqual(
+            tsd_apply_async.call_count, TimeSeriesDataType.objects.count())
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.resource_owner_key)
-        self.assertEqual(fbuser.auth_secret, self.resource_owner_secret)
+        self.assertEqual(fbuser.access_token, self.token['access_token'])
+        self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
 
     def test_access_error(self):
@@ -236,37 +221,42 @@ class TestCompleteView(FitappTestBase):
         self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEqual(UserFitbit.objects.count(), 0)
 
-    def test_no_token(self):
-        """Complete view should redirect to error if token isn't in session."""
-        response = self._get(use_token=False)
+    def test_no_code(self):
+        """
+        Complete view should redirect to error if `code` param is not
+        present.
+        """
+        response = self._mock_client()
         self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEqual(UserFitbit.objects.count(), 0)
 
-    def test_no_verifier(self):
+    def test_no_access_token(self):
         """
-        Complete view should redirect to error if verifier param is not
-        present.
+        Complete view should redirect to error if there isn't an access_token.
         """
-        response = self._get(use_verifier=False)
+        token = self.token.copy()
+        token.pop('access_token')
+        response = self._mock_client(
+            client_kwargs=token, get_kwargs={'code': self.code})
         self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEqual(UserFitbit.objects.count(), 0)
 
     @patch('fitapp.tasks.subscribe.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')
     def test_integrated(self, tsd_apply_async, sub_apply_async):
-        """
-        Complete view should overwrite existing credentials for this user.
+        """Complete view should overwrite existing credentials for this user.
         """
         self.fbuser = self.create_userfitbit(user=self.user)
-        response = self._mock_client()
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
         fbuser = UserFitbit.objects.get()
         sub_apply_async.assert_called_with(
             (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
         self.assertEqual(tsd_apply_async.call_count,
                          TimeSeriesDataType.objects.count())
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.resource_owner_key)
-        self.assertEqual(fbuser.auth_secret, self.resource_owner_secret)
+        self.assertEqual(fbuser.access_token, self.token['access_token'])
+        self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
         self.assertRedirectsNoFollow(
             response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
@@ -302,8 +292,8 @@ class TestLogoutView(FitappTestBase):
         response = self._get()
         apply_async.assert_called_once_with(kwargs=self.fbuser.get_user_data(),
                                             countdown=5)
-        self.assertRedirectsNoFollow(response,
-                utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        self.assertRedirectsNoFollow(
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         self.assertEqual(UserFitbit.objects.count(), 0)
 
     def test_unauthenticated(self):
@@ -317,8 +307,8 @@ class TestLogoutView(FitappTestBase):
         """No Fitbit credentials required to access Logout view."""
         self.fbuser.delete()
         response = self._get()
-        self.assertRedirectsNoFollow(response,
-                utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        self.assertRedirectsNoFollow(
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         self.assertEqual(UserFitbit.objects.count(), 0)
 
     @patch('fitapp.tasks.unsubscribe.apply_async')

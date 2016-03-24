@@ -10,17 +10,18 @@ UserModel = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
 class UserFitbit(models.Model):
     user = models.OneToOneField(UserModel)
     fitbit_user = models.CharField(max_length=32, unique=True)
-    auth_token = models.TextField()
+    access_token = models.TextField()
     auth_secret = models.TextField()
+    refresh_token = models.TextField()
 
     def __str__(self):
         return self.user.__str__()
 
     def get_user_data(self):
         return {
-            'resource_owner_key': self.auth_token,
-            'resource_owner_secret': self.auth_secret,
             'user_id': self.fitbit_user,
+            'access_token': self.access_token,
+            'refresh_token': self.refresh_token
         }
 
 
