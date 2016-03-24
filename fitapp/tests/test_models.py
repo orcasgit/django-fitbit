@@ -10,7 +10,7 @@ class TestFitappModels(FitappTestBase):
         self.assertEqual(self.fbuser.user, self.user)
         self.assertEqual(self.fbuser.__str__(), self.username)
         self.assertEqual(self.fbuser.get_user_data(), {
-            'access_token': self.fbuser.auth_token,
+            'access_token': self.fbuser.access_token,
             'refresh_token': self.fbuser.refresh_token,
             'user_id': self.fbuser.fitbit_user
         })

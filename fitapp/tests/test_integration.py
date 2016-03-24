@@ -162,7 +162,7 @@ class TestCompleteView(FitappTestBase):
                 (fbuser.fitbit_user, _type.category, _type.resource,),
                 countdown=10 + (i * 5))
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.token['access_token'])
+        self.assertEqual(fbuser.access_token, self.token['access_token'])
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
 
@@ -208,7 +208,7 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(
             tsd_apply_async.call_count, TimeSeriesDataType.objects.count())
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.token['access_token'])
+        self.assertEqual(fbuser.access_token, self.token['access_token'])
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
 
@@ -255,7 +255,7 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(tsd_apply_async.call_count,
                          TimeSeriesDataType.objects.count())
         self.assertEqual(fbuser.user, self.user)
-        self.assertEqual(fbuser.auth_token, self.token['access_token'])
+        self.assertEqual(fbuser.access_token, self.token['access_token'])
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
         self.assertRedirectsNoFollow(

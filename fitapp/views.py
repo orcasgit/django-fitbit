@@ -90,7 +90,7 @@ def complete(request):
         return redirect(reverse('fitbit-error'))
 
     fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
-    fbuser.auth_token = access_token
+    fbuser.access_token = access_token
     fbuser.fitbit_user = fitbit_user
     fbuser.refresh_token = token['refresh_token']
     fbuser.save()
