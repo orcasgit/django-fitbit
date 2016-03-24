@@ -19,7 +19,8 @@ def forwards(apps, schema_editor):
             fbuser.refresh_token = token['refresh_token']
             fbuser.save()
         except MissingTokenError:
-            pass
+            # Delete fitbit user if existing access_token is invalid
+            fbuser.delete()
 
 
 def backwards(apps, schema_editor):
