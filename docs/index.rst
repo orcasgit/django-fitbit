@@ -38,7 +38,7 @@ To run the tests for specific python version (ie. py27-1.8.X)::
 
     tox -e py27-1.8.X
 
-If you would like to run specific test you can bypass tox altogethera and run::
+If you would like to run specific test you can bypass tox altogether and run::
 
     python -m run_tests fitapp.tests.test_integration.TestLoginView.test_unauthenticated
 

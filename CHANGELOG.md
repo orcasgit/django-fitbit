@@ -1,4 +1,4 @@
-0.1.3 (2016-03-23)
+0.2.0 (2016-03-23)
 ==================
 
 - Integrate with python-fitbit OAuth2 (fitbit==0.2)

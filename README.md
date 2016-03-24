@@ -13,14 +13,11 @@ Getting Help
 
 Documentation is hosted on <http://django-fitbit.readthedocs.org>.
 
-This app is available on `PyPI`_ and can be installed with ``pip install
-django-fitbit``.
+This app is available on `PyPI` and can be installed with `pip install django-fitbit`.
 
-.. _PyPI: https://pypi.python.org/pypi/django-fitbit/
+[PyPI](https://pypi.python.org/pypi/django-fitbit/)
 
 Contributing
 ============
 
-See the `contributing docs`_.
-
-.. _contributing docs: https://github.com/orcasgit/django-fitbit/blob/master/docs/index.rst
+See the [contributing docs](https://github.com/orcasgit/django-fitbit/blob/master/docs/index.rst)
