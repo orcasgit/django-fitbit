@@ -92,7 +92,6 @@ def check_for_new_token(fbuser, token):
                                       timezone)
         utc_now = make_aware(datetime.utcnow(), pytz.timezone('UTC'))
         if expires_at_local > localtime(utc_now, timezone):
-            print('w00t! Updating with refreshed token!')
             fbuser.access_token = token['access_token']
             fbuser.refresh_token = token['refresh_token']
             fbuser.expires_at = expires_at
