@@ -9,6 +9,7 @@ from dateutil import parser
 from django.core.cache import cache
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.urlresolvers import reverse
+from django.test import TransactionTestCase
 from django.test.utils import override_settings
 from freezegun import freeze_time
 from mock import MagicMock, patch
@@ -27,7 +28,7 @@ except ImportError:  # Python 2.x fallback
 from .base import FitappTestBase
 
 
-class TestRetrievalUtility(FitappTestBase):
+class TestRetrievalUtility(FitappTestBase, TransactionTestCase):
     """Tests for the get_fitbit_data utility function."""
 
     def setUp(self):
@@ -38,10 +39,11 @@ class TestRetrievalUtility(FitappTestBase):
 
     @patch('fitapp.utils.create_fitbit')
     def _mock_time_series(self, create_fitbit, error=None, response=None,
-                          error_attrs={}, access_token=None,
+                          error_attrs={}, access_token=None, profile_mock={},
                           refresh_token=None, expires_at=None):
         fitbit = MagicMock()
         fitbit.time_series = MagicMock()
+        fitbit.user_profile_get = MagicMock()
         if error:
             exc = error(self._error_response())
             for k, v in error_attrs.items():
@@ -49,6 +51,7 @@ class TestRetrievalUtility(FitappTestBase):
             fitbit.time_series.side_effect = exc
         elif response:
             fitbit.time_series.return_value = response
+        fitbit.user_profile_get.return_value = profile_mock
         client = MagicMock()
         client.token = self.fbuser.get_user_data()
         if access_token and refresh_token:
@@ -134,7 +137,8 @@ class TestRetrievalUtility(FitappTestBase):
         kwargs = {
             'response': response,
             'access_token': 'new_at',
-            'refresh_token': 'new_rt'
+            'refresh_token': 'new_rt',
+            'profile_mock': {'user': {'timezone': 'America/Denver'}}
         }
 
         # Check that when the new expiration date is less than the old one, we
@@ -147,6 +151,7 @@ class TestRetrievalUtility(FitappTestBase):
         userfitbit = UserFitbit.objects.all()[0]
         self.assertEqual(userfitbit.access_token, self.fbuser.access_token)
         self.assertEqual(userfitbit.refresh_token, self.fbuser.refresh_token)
+        self.assertEqual(userfitbit.timezone, 'America/Los_Angeles')
 
         # Check that when expires_at is less than now, we don't update the
         # model
@@ -155,10 +160,10 @@ class TestRetrievalUtility(FitappTestBase):
             kwargs['expires_at'] = 1461203858.405841
             steps = self._mock_time_series(**kwargs)
             self.assertEqual(steps, response['activities-steps'])
-            userfitbit = UserFitbit.objects.all()[0]
-            self.assertEqual(userfitbit.access_token, self.fbuser.access_token)
-            self.assertEqual(userfitbit.refresh_token,
-                             self.fbuser.refresh_token)
+        userfitbit = UserFitbit.objects.all()[0]
+        self.assertEqual(userfitbit.access_token, self.fbuser.access_token)
+        self.assertEqual(userfitbit.refresh_token, self.fbuser.refresh_token)
+        self.assertEqual(userfitbit.timezone, 'America/Los_Angeles')
 
         # Now that `now` is sufficiently in the past, we update the model with
         # the new tokens
@@ -166,10 +171,11 @@ class TestRetrievalUtility(FitappTestBase):
             # 2016-4-20 18:57:38.405841
             kwargs['expires_at'] = 1461203858.405841
             steps = self._mock_time_series(**kwargs)
-            self.assertEqual(steps, response['activities-steps'])
-            userfitbit = UserFitbit.objects.all()[0]
-            self.assertEqual(userfitbit.access_token, 'new_at')
-            self.assertEqual(userfitbit.refresh_token, 'new_rt')
+        self.assertEqual(steps, response['activities-steps'])
+        userfitbit = UserFitbit.objects.all()[0]
+        self.assertEqual(userfitbit.access_token, 'new_at')
+        self.assertEqual(userfitbit.refresh_token, 'new_rt')
+        self.assertEqual(userfitbit.timezone, 'America/Denver')
 
 
 class TestRetrievalTask(FitappTestBase):

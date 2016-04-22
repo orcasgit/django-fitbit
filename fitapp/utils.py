@@ -3,6 +3,7 @@ import pytz
 from datetime import datetime
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.db import transaction
 from django.utils.timezone import localtime, make_aware
 
 from fitbit import Fitbit
@@ -48,6 +49,7 @@ def get_valid_periods():
     return ['1d', '7d', '30d', '1w', '1m', '3m', '6m', '1y', 'max']
 
 
+@transaction.atomic()
 def get_fitbit_data(fbuser, resource_type, base_date=None, period=None,
                     end_date=None):
     """Creates a Fitbit API instance and retrieves step data for the period.
