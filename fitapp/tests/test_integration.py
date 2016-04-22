@@ -136,7 +136,16 @@ class TestCompleteView(FitappTestBase):
     token = {
         'access_token': 'AccessToken123',
         'refresh_token': 'RefreshToken123',
+        'expires_at': 1461103848.405841,
         'user_id': user_id
+    }
+    fetch_token = {
+        'user_id': 'userid',
+        'access_token': 'AccessToken123',
+        'refresh_token': 'RefreshToken123',
+        'expires_at': 1461103848.405841,
+        'token_type': 'Bearer',
+        'scope': ['weight', 'sleep', 'heartrate', 'activity']
     }
     code = 'Code123'
 
@@ -144,17 +153,17 @@ class TestCompleteView(FitappTestBase):
         super(TestCompleteView, self).setUp()
         self.fbuser.delete()
 
-    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.update_user_timezone.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')
-    def test_complete(self, tsd_apply_async, sub_apply_async):
+    def test_complete(self, tsd_apply_async, uut_apply_async):
         """Complete view should fetch & store user's access credentials."""
         response = self._mock_client(
             client_kwargs=self.token, get_kwargs={'code': self.code})
         self.assertRedirectsNoFollow(
             response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         fbuser = UserFitbit.objects.get()
-        sub_apply_async.assert_called_once_with(
-            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
+        uut_apply_async.assert_called_once_with(
+            (fbuser.fitbit_user,), countdown=1)
         tsdts = TimeSeriesDataType.objects.all()
         self.assertEqual(tsd_apply_async.call_count, tsdts.count())
         for i, _type in enumerate(tsdts):
@@ -166,9 +175,10 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
 
-    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.update_user_timezone.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')
-    def test_complete_already_integrated(self, tsd_apply_async, sub_apply_async):
+    def test_complete_already_integrated(self, tsd_apply_async,
+                                         uut_apply_async):
         """
         Complete view redirect to the error view if a user attempts to connect
         an already integrated fitbit user to a second user.
@@ -182,7 +192,7 @@ class TestCompleteView(FitappTestBase):
             client_kwargs=self.token, get_kwargs={'code': self.code})
         self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEqual(UserFitbit.objects.all().count(), 1)
-        self.assertEqual(sub_apply_async.call_count, 0)
+        self.assertEqual(uut_apply_async.call_count, 0)
         self.assertEqual(tsd_apply_async.call_count, 0)
 
     def test_unauthenticated(self):
@@ -192,19 +202,24 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(UserFitbit.objects.count(), 0)
 
-    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.update_user_timezone.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')
-    def test_next(self, tsd_apply_async, sub_apply_async):
+    def test_next(self, tsd_apply_async, uut_apply_async):
         """
         Complete view should redirect to session['fitbit_next'] if available.
         """
         self._set_session_vars(fitbit_next='/test')
+
+        profile = {'user': {'timezone': 'America/Los_Angeles'}}
+        client_kwargs = dict(list(self.token.items()) + [
+            ('make_request_resp', profile,)
+        ])
         response = self._mock_client(
-            client_kwargs=self.token, get_kwargs={'code': self.code})
+            client_kwargs=client_kwargs, get_kwargs={'code': self.code})
         self.assertRedirectsNoFollow(response, '/test')
         fbuser = UserFitbit.objects.get()
-        sub_apply_async.assert_called_once_with(
-            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
+        uut_apply_async.assert_called_once_with(
+            (fbuser.fitbit_user,), countdown=1)
         self.assertEqual(
             tsd_apply_async.call_count, TimeSeriesDataType.objects.count())
         self.assertEqual(fbuser.user, self.user)
@@ -241,17 +256,18 @@ class TestCompleteView(FitappTestBase):
         self.assertRedirectsNoFollow(response, reverse('fitbit-error'))
         self.assertEqual(UserFitbit.objects.count(), 0)
 
-    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.update_user_timezone.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')
-    def test_integrated(self, tsd_apply_async, sub_apply_async):
+    def test_integrated(self, tsd_apply_async, uut_apply_async):
         """Complete view should overwrite existing credentials for this user.
         """
         self.fbuser = self.create_userfitbit(user=self.user)
+
         response = self._mock_client(
             client_kwargs=self.token, get_kwargs={'code': self.code})
         fbuser = UserFitbit.objects.get()
-        sub_apply_async.assert_called_with(
-            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
+        uut_apply_async.assert_called_with(
+            (fbuser.fitbit_user,), countdown=1)
         self.assertEqual(tsd_apply_async.call_count,
                          TimeSeriesDataType.objects.count())
         self.assertEqual(fbuser.user, self.user)

@@ -13,6 +13,9 @@ class UserFitbit(models.Model):
     access_token = models.TextField()
     auth_secret = models.TextField()
     refresh_token = models.TextField()
+    # We will store the timestamp float number as it comes from Fitbit here
+    expires_at = models.FloatField()
+    timezone = models.CharField(max_length=128)
 
     def __str__(self):
         return self.user.__str__()

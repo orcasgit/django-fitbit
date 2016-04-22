@@ -12,22 +12,42 @@ from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
 
 
 logger = logging.getLogger(__name__)
-LOCK_EXPIRE = 60 * 5 # Lock expires in 5 minutes
+LOCK_EXPIRE = 60 * 5  # Lock expires in 5 minutes
+
+
+def _hit_rate_limit(exc, task):
+    # We have hit the rate limit for the user, retry when it's reset,
+    # according to the reply from the failing API call
+    logger.debug('Rate limit reached, will try again in %s seconds' %
+                 exc.retry_after_secs)
+    raise task.retry(exc=exc, countdown=exc.retry_after_secs)
+
+
+def _generic_task_exception(exc, task_name):
+    logger.exception("Exception running task %s: %s" % (task_name, exc))
+    raise Reject(exc, requeue=False)
 
 
 @shared_task
 def subscribe(fitbit_user, subscriber_id):
-    """ Subscribe to the user's fitbit data """
-
-    fbusers = UserFitbit.objects.filter(fitbit_user=fitbit_user)
-    for fbuser in fbusers:
+    """ Subscribe the user and retrieve historical data for it """
+    update_user_timezone.apply_async((fitbit_user,), countdown=1)
+    for fbuser in UserFitbit.objects.filter(fitbit_user=fitbit_user):
         fb = utils.create_fitbit(**fbuser.get_user_data())
         try:
             fb.subscription(fbuser.user.id, subscriber_id)
-        except:
-            exc = sys.exc_info()[1]
-            logger.exception("Error subscribing user: %s" % exc)
-            raise Reject(exc, requeue=False)
+        except HTTPTooManyRequests:
+            _hit_rate_limit(sys.exc_info()[1], subscribe)
+        except Exception:
+            _generic_task_exception(sys.exc_info()[1], 'subscribe')
+
+    # Create tasks for all data in all data types
+    for i, _type in enumerate(TimeSeriesDataType.objects.all()):
+        # Delay execution for a few seconds to speed up response Offset each
+        # call by 5 seconds so they don't bog down the server
+        get_time_series_data.apply_async(
+            (fitbit_user, _type.category, _type.resource,),
+            countdown=10 + (i * 5))
 
 
 @shared_task
@@ -40,11 +60,10 @@ def unsubscribe(*args, **kwargs):
             if sub['ownerId'] == kwargs['user_id']:
                 fb.subscription(sub['subscriptionId'], sub['subscriberId'],
                                 method="DELETE")
-    except:
-        exc = sys.exc_info()[1]
-        logger.exception("Error unsubscribing user: %s" % exc)
-        raise Reject(exc, requeue=False)
-
+    except HTTPTooManyRequests:
+        _hit_rate_limit(sys.exc_info()[1], unsubscribe)
+    except Exception:
+        _generic_task_exception(sys.exc_info()[1], 'unsubscribe')
 
 
 @shared_task
@@ -83,12 +102,7 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
         # Release the lock
         cache.delete(lock_id)
     except HTTPTooManyRequests:
-        # We have hit the rate limit for the user, retry when it's reset,
-        # according to the reply from the failing API call
-        e = sys.exc_info()[1]
-        logger.debug('Rate limit reached, will try again in %s seconds' %
-                     e.retry_after_secs)
-        raise get_time_series_data.retry(exc=e, countdown=e.retry_after_secs)
+        _hit_rate_limit(sys.exc_info()[1], get_time_series_data)
     except HTTPBadRequest:
         # If the resource is elevation or floors, we are just getting this
         # error because the data doesn't exist for this user, so we can ignore
@@ -98,6 +112,22 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
             logger.exception("Exception updating data: %s" % exc)
             raise Reject(exc, requeue=False)
     except Exception:
-        exc = sys.exc_info()[1]
-        logger.exception("Exception updating data: %s" % exc)
-        raise Reject(exc, requeue=False)
+        _generic_task_exception(sys.exc_info()[1], 'get_time_series_data')
+
+
+@shared_task
+def update_user_timezone(fitbit_user):
+    """ Get the user's profile and update the timezone we have on file """
+
+    fbusers = UserFitbit.objects.filter(fitbit_user=fitbit_user)
+    try:
+        for fbuser in fbusers:
+            fb = utils.create_fitbit(**fbuser.get_user_data())
+            profile = fb.user_profile_get()
+            fbuser.timezone = profile['user']['timezone']
+            fbuser.save()
+            utils.check_for_new_token(fbuser, fb.client.token)
+    except HTTPTooManyRequests:
+        _hit_rate_limit(sys.exc_info()[1], update_user_timezone)
+    except Exception:
+        _generic_task_exception(sys.exc_info()[1], 'update_user_timezone')

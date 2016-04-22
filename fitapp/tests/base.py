@@ -1,6 +1,15 @@
-from mock import patch, Mock
 import django
+import json
 import random
+
+
+from datetime import datetime
+from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
+from django.test import TestCase
+from fitbit.api import Fitbit
+from mock import patch, Mock
+
 try:
     from urllib.parse import urlencode
     from string import ascii_letters
@@ -8,12 +17,6 @@ except:
     # Python 2.x
     from urllib import urlencode
     from string import letters as ascii_letters
-
-from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
-from django.test import TestCase
-
-from fitbit.api import Fitbit
 
 from fitapp.models import UserFitbit
 
@@ -25,6 +28,7 @@ class MockClient(object):
         self.client_secret = kwargs.get('client_secret', 'S12345Secret')
         self.access_token = kwargs.get('access_token', None)
         self.refresh_token = kwargs.get('refresh_token', None)
+        self.make_request_resp = kwargs.get('make_request_resp', {})
         self.error = kwargs.get('error', None)
 
     def authorize_token_url(self, *args, **kwargs):
@@ -37,6 +41,7 @@ class MockClient(object):
         token = {
             'user_id': self.user_id,
             'refresh_token': self.refresh_token,
+            'expires_at': 1461103848.405841,
             'token_type': 'Bearer',
             'scope': ['weight', 'sleep', 'heartrate', 'activity']
         }
@@ -47,7 +52,7 @@ class MockClient(object):
     def make_request(self, *args, **kwargs):
         response = Mock()
         response.status_code = 204
-        response.content = "{}".encode('utf8')
+        response.content = json.dumps(self.make_request_resp).encode('utf8')
         return response
 
 
@@ -83,7 +88,10 @@ class FitappTestBase(TestCase):
             'fitbit_user': kwargs.pop('fitbit_user', self.random_string(25)),
             'access_token': self.random_string(25),
             'auth_secret': self.random_string(25),
-            'refresh_token': self.random_string(25)
+            'refresh_token': self.random_string(25),
+            # Set the token to expire on 2016-4-18 11:24:08.405841
+            'expires_at': 1461003848.405841,
+            'timezone': 'America/Los_Angeles'
         }
         defaults.update(kwargs)
         return UserFitbit.objects.create(**defaults)

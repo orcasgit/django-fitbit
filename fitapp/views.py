@@ -1,5 +1,7 @@
+import pytz
 import simplejson as json
 
+from datetime import datetime
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
@@ -20,7 +22,7 @@ from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
 from . import forms
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
-from .tasks import get_time_series_data, subscribe, unsubscribe
+from .tasks import subscribe, get_time_series_data, unsubscribe
 
 
 @login_required
@@ -83,52 +85,31 @@ def complete(request):
         token = fb.client.fetch_access_token(code, callback_uri)
         access_token = token['access_token']
         fitbit_user = token['user_id']
+        expires_at = token['expires_at']
     except KeyError:
         return redirect(reverse('fitbit-error'))
 
     if UserFitbit.objects.filter(fitbit_user=fitbit_user).exists():
         return redirect(reverse('fitbit-error'))
 
-    fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
-    fbuser.access_token = access_token
-    fbuser.fitbit_user = fitbit_user
-    fbuser.refresh_token = token['refresh_token']
-    fbuser.save()
+    UserFitbit.objects.update_or_create(user_id=request.user.id, defaults={
+        'fitbit_user': fitbit_user,
+        'access_token': access_token,
+        'refresh_token': token['refresh_token'],
+        'expires_at': expires_at,
+        'timezone': 'UTC'
+    })
 
-    # Add the Fitbit user info to the session
-    request.session['fitbit_profile'] = fb.user_profile_get()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         try:
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
+            subscribe.apply_async((fitbit_user, SUBSCRIBER_ID,), countdown=1)
         except ImproperlyConfigured:
             return redirect(reverse('fitbit-error'))
-        subscribe.apply_async((fbuser.fitbit_user, SUBSCRIBER_ID), countdown=5)
-        # Create tasks for all data in all data types
-        for i, _type in enumerate(TimeSeriesDataType.objects.all()):
-            # Delay execution for a few seconds to speed up response
-            # Offset each call by 2 seconds so they don't bog down the server
-            get_time_series_data.apply_async(
-                (fbuser.fitbit_user, _type.category, _type.resource,),
-                countdown=10 + (i * 5))
 
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
         'FITAPP_LOGIN_REDIRECT')
     return redirect(next_url)
-
-
-@receiver(user_logged_in)
-def create_fitbit_session(sender, request, user, **kwargs):
-    """ If the user is a fitbit user, update the profile in the session. """
-
-    if user.is_authenticated() and utils.is_integrated(user) and \
-            user.is_active:
-        fbuser = UserFitbit.objects.filter(user=user)
-        if fbuser.exists():
-            fb = utils.create_fitbit(**fbuser[0].get_user_data())
-            try:
-                request.session['fitbit_profile'] = fb.user_profile_get()
-            except:
-                pass
 
 
 @login_required
@@ -233,6 +214,10 @@ def update(request):
                         countdown=(2 * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
+        except Exception:
+            # Unexpected error, ignore and return 204 so fitbit doesn't disable
+            # our subscriber
+            pass
 
         return HttpResponse(status=204)
     elif request.method == 'GET':
@@ -263,9 +248,11 @@ def normalize_date_range(request, fitbit_data):
     base_date = fitbit_data['base_date']
     if base_date == 'today':
         now = timezone.now()
-        if 'fitbit_profile' in request.session.keys():
-            tz = request.session['fitbit_profile']['user']['timezone']
-            now = timezone.pytz.timezone(tz).normalize(timezone.now())
+        fbuser = UserFitbit.objects.filter(user_id=request.user.id)
+        if fbuser.exists():
+            tz = pytz.timezone(fbuser[0].timezone)
+            utc_now = timezone.make_aware(datetime.utcnow(), pytz.utc)
+            now = timezone.localtime(utc_now, tz)
         base_date = now.date().strftime('%Y-%m-%d')
     result['date__gte'] = base_date
 
