@@ -211,7 +211,7 @@ class TestCompleteView(FitappTestBase):
         self._set_session_vars(fitbit_next='/test')
 
         profile = {'user': {'timezone': 'America/Los_Angeles'}}
-        client_kwargs = dict(self.token.items() + [
+        client_kwargs = dict(list(self.token.items()) + [
             ('make_request_resp', profile,)
         ])
         response = self._mock_client(
