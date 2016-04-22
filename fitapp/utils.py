@@ -82,25 +82,24 @@ def check_for_new_token(fbuser, token):
     Update the token if necessary. We are making sure we have a valid
     access_token and refresh_token next time we request Fitbit data
     """
-    fb = create_fitbit(**fbuser.get_user_data())
-    if fb.client.token['access_token'] != fbuser.access_token:
-        expires_at = token.get('expires_at', None)
-        if expires_at and expires_at > fbuser.expires_at:
-            # We've compared the expires_at float values sent by fitbit, now
-            # let's check that the timezone aware expires_at datetime is
-            # greater than now in the fitbit user's timezone
-            timezone = pytz.timezone(fbuser.timezone)
-            expires_at_dt = make_aware(datetime.fromtimestamp(expires_at),
-                                       timezone)
-            utc_now = make_aware(datetime.utcnow(), pytz.timezone('UTC'))
-            if expires_at_dt > localtime(utc_now, timezone):
-                fbuser.access_token = fb.client.token['access_token']
-                fbuser.refresh_token = fb.client.token['refresh_token']
-                fbuser.expires_at = expires_at
-                fbuser.save()
-                from .tasks import update_user_timezone
-                update_user_timezone.apply_async(
-                    (fbuser.fitbit_user,), countdown=1)
+    expires_at = token.get('expires_at', None)
+    if expires_at and expires_at > fbuser.expires_at:
+        # We've compared the expires_at float values sent by fitbit, now let's
+        # check that the timezone aware expires_at datetime is greater than now
+        # in the fitbit user's timezone
+        timezone = pytz.timezone(fbuser.timezone)
+        expires_at_local = make_aware(datetime.fromtimestamp(expires_at),
+                                      timezone)
+        utc_now = make_aware(datetime.utcnow(), pytz.timezone('UTC'))
+        if expires_at_local > localtime(utc_now, timezone):
+            print('w00t! Updating with refreshed token!')
+            fbuser.access_token = token['access_token']
+            fbuser.refresh_token = token['refresh_token']
+            fbuser.expires_at = expires_at
+            fbuser.save()
+            from .tasks import update_user_timezone
+            update_user_timezone.apply_async(
+                (fbuser.fitbit_user,), countdown=1)
 
 
 def get_setting(name, use_defaults=True):

@@ -30,10 +30,9 @@ def _generic_task_exception(exc, task_name):
 
 @shared_task
 def subscribe(fitbit_user, subscriber_id):
-    """ Subscribe to the user's fitbit data """
-
-    fbusers = UserFitbit.objects.filter(fitbit_user=fitbit_user)
-    for fbuser in fbusers:
+    """ Subscribe the user and retrieve historical data for it """
+    update_user_timezone.apply_async((fitbit_user,), countdown=1)
+    for fbuser in UserFitbit.objects.filter(fitbit_user=fitbit_user):
         fb = utils.create_fitbit(**fbuser.get_user_data())
         try:
             fb.subscription(fbuser.user.id, subscriber_id)
@@ -41,6 +40,14 @@ def subscribe(fitbit_user, subscriber_id):
             _hit_rate_limit(sys.exc_info()[1], subscribe)
         except Exception:
             _generic_task_exception(sys.exc_info()[1], 'subscribe')
+
+    # Create tasks for all data in all data types
+    for i, _type in enumerate(TimeSeriesDataType.objects.all()):
+        # Delay execution for a few seconds to speed up response Offset each
+        # call by 5 seconds so they don't bog down the server
+        get_time_series_data.apply_async(
+            (fitbit_user, _type.category, _type.resource,),
+            countdown=10 + (i * 5))
 
 
 @shared_task
@@ -124,40 +131,3 @@ def update_user_timezone(fitbit_user):
         _hit_rate_limit(sys.exc_info()[1], update_user_timezone)
     except Exception:
         _generic_task_exception(sys.exc_info()[1], 'update_user_timezone')
-
-
-@shared_task
-def create_fitbit_user(user_id, token):
-    """ Create the fitbit user and retrieve data for it """
-    try:
-        fb = utils.create_fitbit(access_token=token['access_token'],
-                                 refresh_token=token['refresh_token'])
-        profile = fb.user_profile_get()
-        if UserFitbit.objects.filter(user_id=user_id).exists():
-            fbuser = UserFitbit.objects.get(user_id=user_id)
-            fbuser.expires_at = token['expires_at']
-        else:
-            fbuser = UserFitbit.objects.create(
-                user_id=user_id, expires_at=token['expires_at'])
-        fbuser.access_token = token['access_token']
-        fbuser.fitbit_user = token['user_id']
-        fbuser.refresh_token = token['refresh_token']
-        fbuser.timezone = profile['user']['timezone']
-        fbuser.save()
-
-        if utils.get_setting('FITAPP_SUBSCRIBE'):
-            SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
-            subscribe.apply_async(
-                (token['user_id'], SUBSCRIBER_ID), countdown=5)
-            # Create tasks for all data in all data types
-            for i, _type in enumerate(TimeSeriesDataType.objects.all()):
-                # Delay execution for a few seconds to speed up response
-                # Offset each call by 5 seconds so they don't bog down the
-                # server
-                get_time_series_data.apply_async(
-                    (token['user_id'], _type.category, _type.resource,),
-                    countdown=10 + (i * 5))
-    except HTTPTooManyRequests:
-        _hit_rate_limit(sys.exc_info()[1], create_fitbit_user)
-    except Exception:
-        _generic_task_exception(sys.exc_info()[1], 'create_fitbit_user')
