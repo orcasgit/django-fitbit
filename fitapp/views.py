@@ -221,6 +221,10 @@ def update(request):
                         countdown=(2 * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
+        except Exception:
+            # Unexpected error, ignore and return 204 so fitbit doesn't disable
+            # our subscriber
+            pass
 
         return HttpResponse(status=204)
     elif request.method == 'GET':

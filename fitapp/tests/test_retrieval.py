@@ -279,10 +279,10 @@ class TestRetrievalTask(FitappTestBase):
         self.assertEqual(TimeSeriesData.objects.count(), 1)
         self.assertEqual(TimeSeriesData.objects.get().value, '34')
 
-    def test_problem_queueing_task(self):
-        get_time_series_data = MagicMock()
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_problem_queueing_task(self, gtsd_apply_async):
         # If queueing the task raises an exception, it doesn't propagate
-        get_time_series_data.apply_async.side_effect = Exception
+        gtsd_apply_async.side_effect = Exception
         try:
             self._receive_fitbit_updates()
         except:
