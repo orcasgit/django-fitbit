@@ -6,7 +6,6 @@ env:
   #- TOX_ENV=pypy-1.9.X
   #- TOX_ENV=pypy-1.8.X
   #- TOX_ENV=pypy-1.7.X
-  #- TOX_ENV=pypy-1.4.X
   - TOX_ENV=py35-trunk
   - TOX_ENV=py35-1.9.X
   - TOX_ENV=py34-trunk
@@ -18,8 +17,6 @@ env:
   - TOX_ENV=py27-1.9.X
   - TOX_ENV=py27-1.8.X
   - TOX_ENV=py27-1.7.X
-  - TOX_ENV=py27-1.4.X
-  - TOX_ENV=py26-1.4.X
 install:
   - pip install coveralls
   - pip install tox
