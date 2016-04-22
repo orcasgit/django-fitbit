@@ -1,5 +1,6 @@
 import simplejson as json
 
+from datetime import datetime
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
@@ -20,7 +21,7 @@ from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
 from . import forms
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
-from .tasks import get_time_series_data, subscribe, unsubscribe
+from .tasks import create_fitbit_user, get_time_series_data, unsubscribe
 
 
 @login_required
@@ -83,33 +84,20 @@ def complete(request):
         token = fb.client.fetch_access_token(code, callback_uri)
         access_token = token['access_token']
         fitbit_user = token['user_id']
+        expires_at = token['expires_at']
     except KeyError:
         return redirect(reverse('fitbit-error'))
 
     if UserFitbit.objects.filter(fitbit_user=fitbit_user).exists():
         return redirect(reverse('fitbit-error'))
 
-    fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
-    fbuser.access_token = access_token
-    fbuser.fitbit_user = fitbit_user
-    fbuser.refresh_token = token['refresh_token']
-    fbuser.save()
-
-    # Add the Fitbit user info to the session
-    request.session['fitbit_profile'] = fb.user_profile_get()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         try:
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
             return redirect(reverse('fitbit-error'))
-        subscribe.apply_async((fbuser.fitbit_user, SUBSCRIBER_ID), countdown=5)
-        # Create tasks for all data in all data types
-        for i, _type in enumerate(TimeSeriesDataType.objects.all()):
-            # Delay execution for a few seconds to speed up response
-            # Offset each call by 2 seconds so they don't bog down the server
-            get_time_series_data.apply_async(
-                (fbuser.fitbit_user, _type.category, _type.resource,),
-                countdown=10 + (i * 5))
+
+    create_fitbit_user.apply_async((request.user.id, token), countdown=1)
 
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
         'FITAPP_LOGIN_REDIRECT')

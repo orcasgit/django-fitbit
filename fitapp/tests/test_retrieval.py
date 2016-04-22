@@ -4,6 +4,7 @@ import celery
 import json
 import sys
 
+from datetime import datetime
 from dateutil import parser
 from django.core.cache import cache
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -13,7 +14,6 @@ from freezegun import freeze_time
 from mock import MagicMock, patch
 
 from fitbit import exceptions as fitbit_exceptions
-from fitbit.api import Fitbit
 
 from fitapp import utils
 from fitapp.models import UserFitbit, TimeSeriesData, TimeSeriesDataType
@@ -36,16 +36,30 @@ class TestRetrievalUtility(FitappTestBase):
         self.base_date = '2012-06-01'
         self.end_date = None
 
-    @patch.object(Fitbit, 'time_series')
-    def _mock_time_series(self, time_series=None, error=None, response=None,
-                          error_attrs={}):
+    @patch('fitapp.utils.create_fitbit')
+    def _mock_time_series(self, create_fitbit, error=None, response=None,
+                          error_attrs={}, access_token=None,
+                          refresh_token=None, expires_at=None):
+        fitbit = MagicMock()
+        fitbit.time_series = MagicMock()
         if error:
             exc = error(self._error_response())
             for k, v in error_attrs.items():
                 setattr(exc, k, v)
-            time_series.side_effect = exc
+            fitbit.time_series.side_effect = exc
         elif response:
-            time_series.return_value = response
+            fitbit.time_series.return_value = response
+        client = MagicMock()
+        client.token = self.fbuser.get_user_data()
+        if access_token and refresh_token:
+            client.token.update({
+                'access_token': access_token,
+                'refresh_token': refresh_token
+            })
+        if expires_at:
+            client.token['expires_at'] = expires_at
+        fitbit.client = client
+        create_fitbit.return_value = fitbit
         resource_type = TimeSeriesDataType.objects.get(
             category=TimeSeriesDataType.activities, resource='steps')
         return utils.get_fitbit_data(
@@ -103,6 +117,59 @@ class TestRetrievalUtility(FitappTestBase):
         response = {'activities-steps': [1, 2, 3]}
         steps = self._mock_time_series(response=response)
         self.assertEqual(steps, response['activities-steps'])
+
+    def test_expired_token(self):
+        """
+        get_fitbit_data should save updated token if it has changed.
+        To prevent an old refresh_token from being re-saved on the UserFitbit
+        model due to a race condition in celery events, we check that the
+        expiration date in the returned token is greater than the model's
+        expiration date and greater than now before saving. This tests that
+        as well.
+        """
+        userfitbit = UserFitbit.objects.all()[0]
+        self.assertEqual(userfitbit.access_token, self.fbuser.access_token)
+        self.assertEqual(userfitbit.refresh_token, self.fbuser.refresh_token)
+        response = {'activities-steps': [1, 2, 3]}
+        kwargs = {
+            'response': response,
+            'access_token': 'new_at',
+            'refresh_token': 'new_rt'
+        }
+
+        # Check that when the new expiration date is less than the old one, we
+        # don't update the model. Current expires_at is
+        # 2016-4-18 11:24:08.405841
+        self.assertEqual(userfitbit.expires_at, 1461003848.405841)
+        kwargs['expires_at'] = 1460899999.405841  # 2016-4-17 6:33:19.405841
+        steps = self._mock_time_series(**kwargs)
+        self.assertEqual(steps, response['activities-steps'])
+        userfitbit = UserFitbit.objects.all()[0]
+        self.assertEqual(userfitbit.access_token, self.fbuser.access_token)
+        self.assertEqual(userfitbit.refresh_token, self.fbuser.refresh_token)
+
+        # Check that when expires_at is less than now, we don't update the
+        # model
+        with freeze_time('2016-04-22'):
+            # 2016-4-20 18:57:38.405841
+            kwargs['expires_at'] = 1461203858.405841
+            steps = self._mock_time_series(**kwargs)
+            self.assertEqual(steps, response['activities-steps'])
+            userfitbit = UserFitbit.objects.all()[0]
+            self.assertEqual(userfitbit.access_token, self.fbuser.access_token)
+            self.assertEqual(userfitbit.refresh_token,
+                             self.fbuser.refresh_token)
+
+        # Now that `now` is sufficiently in the past, we update the model with
+        # the new tokens
+        with freeze_time('2016-04-19'):
+            # 2016-4-20 18:57:38.405841
+            kwargs['expires_at'] = 1461203858.405841
+            steps = self._mock_time_series(**kwargs)
+            self.assertEqual(steps, response['activities-steps'])
+            userfitbit = UserFitbit.objects.all()[0]
+            self.assertEqual(userfitbit.access_token, 'new_at')
+            self.assertEqual(userfitbit.refresh_token, 'new_rt')
 
 
 class TestRetrievalTask(FitappTestBase):
@@ -187,6 +254,7 @@ class TestRetrievalTask(FitappTestBase):
             self.fbuser.fitbit_user, _type, self.date)
         exc = fitbit_exceptions.HTTPTooManyRequests(self._error_response())
         exc.retry_after_secs = 21
+
         def side_effect(*args, **kwargs):
             # Delete the cache lock after the first try and adjust the
             # get_fitbit_data mock to be successful

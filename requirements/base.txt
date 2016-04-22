@@ -1,4 +1,5 @@
 fitbit==0.2.2
 celery>=3.1.13
+pytz>=2016.3
 simplejson
 six
