@@ -46,24 +46,22 @@ def unsubscribe(*args, **kwargs):
         raise Reject(exc, requeue=False)
 
 
-
 @shared_task
-def get_time_series_data(fitbit_user, cat, resource, date=None):
+def get_time_series_data(fitbit_user, categories=[], date=None):
     """ Get the user's time series data """
 
-    try:
-        _type = TimeSeriesDataType.objects.get(category=cat, resource=resource)
-    except TimeSeriesDataType.DoesNotExist:
-        logger.exception("The resource %s in category %s doesn't exist" % (
-            resource, cat))
+    filters = {'category__in': categories} if categories else {}
+    types = TimeSeriesDataType.objects.filter(**filters)
+    if not types.exists():
+        logger.exception("Couldn't find the time series data types")
         raise Reject(sys.exc_info()[1], requeue=False)
 
     # Create a lock so we don't try to run the same task multiple times
     sdat = date.strftime('%Y-%m-%d') if date else 'ALL'
-    lock_id = '{0}-lock-{1}-{2}-{3}'.format(__name__, fitbit_user, _type, sdat)
+    cats = '-'.join('%s' % i for i in categories)
+    lock_id = '{0}-lock-{1}-{2}-{3}'.format(__name__, fitbit_user, cats, sdat)
     if not cache.add(lock_id, 'true', LOCK_EXPIRE):
-        logger.debug('Already retrieving %s data for date %s, user %s' % (
-            _type, fitbit_user, sdat))
+        logger.debug('Already working on %s' % lock_id)
         raise Ignore()
 
     fbusers = UserFitbit.objects.filter(fitbit_user=fitbit_user)
@@ -72,16 +70,15 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
         dates = {'base_date': date, 'end_date': date}
     try:
         for fbuser in fbusers:
-            data = utils.get_fitbit_data(fbuser, _type, **dates)
-            for datum in data:
-                # Create new record or update existing record
-                date = parser.parse(datum['dateTime'])
-                tsd, created = TimeSeriesData.objects.get_or_create(
-                    user=fbuser.user, resource_type=_type, date=date)
-                tsd.value = datum['value']
-                tsd.save()
-        # Release the lock
-        cache.delete(lock_id)
+            for _type in types:
+                data = utils.get_fitbit_data(fbuser, _type, **dates)
+                for datum in data:
+                    # Create new record or update existing record
+                    date = parser.parse(datum['dateTime'])
+                    tsd, created = TimeSeriesData.objects.get_or_create(
+                        user=fbuser.user, resource_type=_type, date=date)
+                    tsd.value = datum['value']
+                    tsd.save()
     except HTTPTooManyRequests:
         # We have hit the rate limit for the user, retry when it's reset,
         # according to the reply from the failing API call
@@ -93,7 +90,7 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
         # If the resource is elevation or floors, we are just getting this
         # error because the data doesn't exist for this user, so we can ignore
         # the error
-        if not ('elevation' in resource or 'floors' in resource):
+        if not ('elevation' in _type.resource or 'floors' in _type.resource):
             exc = sys.exc_info()[1]
             logger.exception("Exception updating data: %s" % exc)
             raise Reject(exc, requeue=False)
@@ -101,3 +98,6 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
         exc = sys.exc_info()[1]
         logger.exception("Exception updating data: %s" % exc)
         raise Reject(exc, requeue=False)
+    finally:
+        # Release the lock
+        cache.delete(lock_id)
