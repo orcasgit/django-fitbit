@@ -154,13 +154,9 @@ class TestCompleteView(FitappTestBase):
             response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         fbuser = UserFitbit.objects.get()
         sub_apply_async.assert_called_once_with(
-            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
-        tsdts = TimeSeriesDataType.objects.all()
-        self.assertEqual(tsd_apply_async.call_count, tsdts.count())
-        for i, _type in enumerate(tsdts):
-            tsd_apply_async.assert_any_call(
-                (fbuser.fitbit_user, _type.category, _type.resource,),
-                countdown=10 + (i * 5))
+            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=1)
+        tsd_apply_async.assert_called_once_with(
+            (fbuser.fitbit_user,), countdown=1)
         self.assertEqual(fbuser.user, self.user)
         self.assertEqual(fbuser.access_token, self.token['access_token'])
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
@@ -204,9 +200,9 @@ class TestCompleteView(FitappTestBase):
         self.assertRedirectsNoFollow(response, '/test')
         fbuser = UserFitbit.objects.get()
         sub_apply_async.assert_called_once_with(
-            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
-        self.assertEqual(
-            tsd_apply_async.call_count, TimeSeriesDataType.objects.count())
+            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=1)
+        tsd_apply_async.assert_called_once_with(
+            (fbuser.fitbit_user,), countdown=1)
         self.assertEqual(fbuser.user, self.user)
         self.assertEqual(fbuser.access_token, self.token['access_token'])
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
@@ -251,9 +247,9 @@ class TestCompleteView(FitappTestBase):
             client_kwargs=self.token, get_kwargs={'code': self.code})
         fbuser = UserFitbit.objects.get()
         sub_apply_async.assert_called_with(
-            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=5)
-        self.assertEqual(tsd_apply_async.call_count,
-                         TimeSeriesDataType.objects.count())
+            (fbuser.fitbit_user, settings.FITAPP_SUBSCRIBER_ID), countdown=1)
+        tsd_apply_async.assert_called_once_with(
+            (fbuser.fitbit_user,), countdown=1)
         self.assertEqual(fbuser.user, self.user)
         self.assertEqual(fbuser.access_token, self.token['access_token'])
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])

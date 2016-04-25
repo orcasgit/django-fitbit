@@ -134,15 +134,13 @@ class TestRetrievalTask(FitappTestBase):
         # from Fitbit.
         get_fitbit_data.return_value = [{'value': self.value}]
         category = getattr(TimeSeriesDataType, self.category)
-        resources = TimeSeriesDataType.objects.filter(category=category)
         self._receive_fitbit_updates()
-        self.assertEqual(get_fitbit_data.call_count, resources.count())
-        # Check that the cache locks have been deleted
-        for resource in resources:
-            self.assertEqual(
-                cache.get('fitapp.get_time_series_data-lock-%s-%s-%s' % (
-                    category, resource.resource, self.date)
-                ), None)
+        self.assertEqual(get_fitbit_data.call_count, 1)
+        # Check that the cache lock has been deleted
+        self.assertEqual(
+            cache.get('fitapp.get_time_series_data-lock-%s-%s-%s' % (
+                self.fbuser.fitbit_user, category, self.date)
+            ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
             assert tsd.value, self.value
@@ -153,15 +151,13 @@ class TestRetrievalTask(FitappTestBase):
         # is received from Fitbit.
         get_fitbit_data.return_value = [{'value': self.value}]
         category = getattr(TimeSeriesDataType, self.category)
-        resources = TimeSeriesDataType.objects.filter(category=category)
         self._receive_fitbit_updates(file=True)
-        self.assertEqual(get_fitbit_data.call_count, resources.count())
-        # Check that the cache locks have been deleted
-        for resource in resources:
-            self.assertEqual(
-                cache.get('fitapp.get_time_series_data-lock-%s-%s-%s' % (
-                    category, resource.resource, self.date)
-                ), None)
+        self.assertEqual(get_fitbit_data.call_count, 1)
+        # Check that the cache lock has been deleted
+        self.assertEqual(
+            cache.get('fitapp.get_time_series_data-lock-%s-%s-%s' % (
+                self.fbuser.fitbit_user, category, self.date)
+            ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
             assert tsd.value, self.value
@@ -181,15 +177,15 @@ class TestRetrievalTask(FitappTestBase):
     @patch('fitapp.utils.get_fitbit_data')
     def test_subscription_update_too_many(self, get_fitbit_data):
         # Check that celery tasks get postponed if the rate limit is hit
-        cat_id = getattr(TimeSeriesDataType, self.category)
-        _type = TimeSeriesDataType.objects.filter(category=cat_id)[0]
-        lock_id = 'fitapp.tasks-lock-{0}-{1}-{2}'.format(
-            self.fbuser.fitbit_user, _type, self.date)
         exc = fitbit_exceptions.HTTPTooManyRequests(self._error_response())
         exc.retry_after_secs = 21
+        category = getattr(TimeSeriesDataType, self.category)
+
         def side_effect(*args, **kwargs):
             # Delete the cache lock after the first try and adjust the
             # get_fitbit_data mock to be successful
+            lock_id = 'fitapp.tasks-lock-{0}-{1}-{2}'.format(
+                self.fbuser.fitbit_user, category, self.date)
             cache.delete(lock_id)
             get_fitbit_data.side_effect = None
             get_fitbit_data.return_value = [{
@@ -198,18 +194,17 @@ class TestRetrievalTask(FitappTestBase):
             }]
             raise exc
         get_fitbit_data.side_effect = side_effect
-        category = getattr(TimeSeriesDataType, self.category)
-        resources = TimeSeriesDataType.objects.filter(category=category)
         self.assertEqual(TimeSeriesData.objects.count(), 0)
         result = get_time_series_data.apply_async(
-            (self.fbuser.fitbit_user, _type.category, _type.resource,),
-            {'date': parser.parse(self.date)})
+            (self.fbuser.fitbit_user,),
+            {'categories': [category], 'date': parser.parse(self.date)})
         result.get()
         # Since celery is in eager mode, we expect a Retry exception first
-        # and then a second task execution that is successful
-        self.assertEqual(get_fitbit_data.call_count, 2)
-        self.assertEqual(TimeSeriesData.objects.count(), 1)
-        self.assertEqual(TimeSeriesData.objects.get().value, '34')
+        # and then task executions for each resource in the category to be
+        # successful
+        self.assertEqual(get_fitbit_data.call_count, 24)
+        self.assertEqual(TimeSeriesData.objects.count(), 23)
+        self.assertEqual(TimeSeriesData.objects.all()[0].value, '34')
 
     def test_problem_queueing_task(self):
         get_time_series_data = MagicMock()

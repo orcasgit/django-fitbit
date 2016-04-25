@@ -102,14 +102,9 @@ def complete(request):
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
             return redirect(reverse('fitbit-error'))
-        subscribe.apply_async((fbuser.fitbit_user, SUBSCRIBER_ID), countdown=5)
-        # Create tasks for all data in all data types
-        for i, _type in enumerate(TimeSeriesDataType.objects.all()):
-            # Delay execution for a few seconds to speed up response
-            # Offset each call by 2 seconds so they don't bog down the server
-            get_time_series_data.apply_async(
-                (fbuser.fitbit_user, _type.category, _type.resource,),
-                countdown=10 + (i * 5))
+        subscribe.apply_async((fbuser.fitbit_user, SUBSCRIBER_ID), countdown=1)
+        # Create a task to retrieve all historical time series data
+        get_time_series_data.apply_async((fbuser.fitbit_user,), countdown=1)
 
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
         'FITAPP_LOGIN_REDIRECT')
@@ -220,17 +215,21 @@ def update(request):
             raise Http404
 
         try:
-            # Create a celery task for each data type in the update
+            # Create a celery task to get data for all categories in the update
+            user_categories = {}
             for update in updates:
+                owner_id = update['ownerId']
+                if owner_id not in user_categories:
+                    user_categories[owner_id] = []
                 cat = getattr(TimeSeriesDataType, update['collectionType'])
-                resources = TimeSeriesDataType.objects.filter(category=cat)
-                for i, _type in enumerate(resources):
-                    # Offset each call by 2 seconds so they don't bog down the
-                    # server
-                    get_time_series_data.apply_async(
-                        (update['ownerId'], _type.category, _type.resource,),
-                        {'date': parser.parse(update['date'])},
-                        countdown=(2 * i))
+                user_categories[owner_id].append(cat)
+            for owner_id, categories in user_categories.items():
+                kwargs = {
+                    'categories': categories,
+                    'date': parser.parse(update['date'])
+                }
+                get_time_series_data.apply_async(
+                    (owner_id,), kwargs, countdown=1)
         except (KeyError, ValueError, OverflowError):
             raise Http404
 
