@@ -5,6 +5,7 @@ from celery import shared_task
 from celery.exceptions import Ignore, Reject
 from dateutil import parser
 from django.core.cache import cache
+from django.db import transaction
 from fitbit.exceptions import HTTPBadRequest, HTTPTooManyRequests
 
 from . import utils
@@ -46,7 +47,6 @@ def unsubscribe(*args, **kwargs):
         raise Reject(exc, requeue=False)
 
 
-
 @shared_task
 def get_time_series_data(fitbit_user, cat, resource, date=None):
     """ Get the user's time series data """
@@ -66,22 +66,27 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
             _type, fitbit_user, sdat))
         raise Ignore()
 
-    fbusers = UserFitbit.objects.filter(fitbit_user=fitbit_user)
-    dates = {'base_date': 'today', 'period': 'max'}
-    if date:
-        dates = {'base_date': date, 'end_date': date}
     try:
-        for fbuser in fbusers:
-            data = utils.get_fitbit_data(fbuser, _type, **dates)
-            for datum in data:
-                # Create new record or update existing record
-                date = parser.parse(datum['dateTime'])
-                tsd, created = TimeSeriesData.objects.get_or_create(
-                    user=fbuser.user, resource_type=_type, date=date)
-                tsd.value = datum['value']
-                tsd.save()
-        # Release the lock
-        cache.delete(lock_id)
+        with transaction.atomic():
+            # Block until we have exclusive update access to this UserFitbit, so
+            # that another process cannot step on us when we update tokens
+            fbusers = UserFitbit.objects.select_for_update().filter(
+                fitbit_user=fitbit_user)
+            dates = {'base_date': 'today', 'period': 'max'}
+            if date:
+                dates = {'base_date': date, 'end_date': date}
+
+            for fbuser in fbusers:
+                data = utils.get_fitbit_data(fbuser, _type, **dates)
+                for datum in data:
+                    # Create new record or update existing record
+                    date = parser.parse(datum['dateTime'])
+                    tsd, created = TimeSeriesData.objects.get_or_create(
+                        user=fbuser.user, resource_type=_type, date=date)
+                    tsd.value = datum['value']
+                    tsd.save()
+            # Release the lock
+            cache.delete(lock_id)
     except HTTPTooManyRequests:
         # We have hit the rate limit for the user, retry when it's reset,
         # according to the reply from the failing API call

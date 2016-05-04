@@ -44,3 +44,7 @@ Getting started
 
 8. To get step data for a user from a web page, use the AJAX
    :py:func:`fitapp.views.get_steps` view.
+
+9. If you are using sqlite, you will want to create a celery configuration that
+   prevents the fitapp celery tasks from being executed concurrently. If you
+   are using any other database type, you can skip this step.

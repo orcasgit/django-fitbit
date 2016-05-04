@@ -1,2 +1,2 @@
 [run]
-omit = fitapp/tests*,fitapp/migrations/*,fitapp/south_migrations/*,run_tests.py,*/site-packages/*,*/python?.?/*,*/pypy/*,.tox/*,/opt/python/*
+omit = fitapp/tests*,fitapp/migrations/*,fitapp/south_migrations/*,run_tests.py,*/site-packages/*,*/python?.?/*,*/pypy/*,.tox/*,/opt/python/*,docs/*,*md,*txt,AUTHORS
