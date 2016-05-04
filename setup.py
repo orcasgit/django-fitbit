@@ -6,7 +6,7 @@ setup(
     name="django-fitbit",
     version=__import__("fitapp").__version__,
     author="orcas",
-    author_email="",
+    author_email="developer@orcasinc.com",
     packages=find_packages(),
     install_requires=["setuptools"] + required,
     include_package_data=True,
