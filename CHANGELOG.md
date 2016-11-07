@@ -1,3 +1,8 @@
+0.2.5 (2016-11-03)
+==================
+
+- Add docstrings to all models, help_text to all fields
+
 0.2.4 (2016-05-04)
 ==================
 
