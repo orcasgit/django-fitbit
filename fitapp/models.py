@@ -20,11 +20,20 @@ class UserFitbit(models.Model):
     def __str__(self):
         return self.user.__str__()
 
+    def refresh_cb(self, token):
+        # Update the token if necessary. We are making sure we have a valid
+        # access_token and refresh_token next time we request Fitbit data
+        if token['access_token'] != self.access_token:
+            self.access_token = token['access_token']
+            self.refresh_token = token['refresh_token']
+            self.save()
+
     def get_user_data(self):
         return {
             'user_id': self.fitbit_user,
             'access_token': self.access_token,
-            'refresh_token': self.refresh_token
+            'refresh_token': self.refresh_token,
+            'refresh_cb': self.refresh_cb,
         }
 
 

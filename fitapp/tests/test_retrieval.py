@@ -11,9 +11,10 @@ from django.core.urlresolvers import reverse
 from django.test.utils import override_settings
 from freezegun import freeze_time
 from mock import MagicMock, patch
+from requests_oauthlib import OAuth2Session
 
 from fitbit import exceptions as fitbit_exceptions
-from fitbit.api import Fitbit
+from fitbit.api import Fitbit, FitbitOauth2Client
 
 from fitapp import utils
 from fitapp.models import UserFitbit, TimeSeriesData, TimeSeriesDataType
@@ -103,6 +104,29 @@ class TestRetrievalUtility(FitappTestBase):
         response = {'activities-steps': [1, 2, 3]}
         steps = self._mock_time_series(response=response)
         self.assertEqual(steps, response['activities-steps'])
+
+    def test_refresh(self):
+        """If token expires, it should refresh automatically"""
+
+        with patch.object(FitbitOauth2Client, '_request') as r:
+            r.side_effect = [
+                fitbit_exceptions.HTTPUnauthorized(
+                    MagicMock(code=401, content=b'unauth response')),
+                MagicMock(code=200, content='{"activities-steps": [1, 2, 3]}')
+            ]
+            with patch.object(OAuth2Session, 'refresh_token') as rt:
+                rt.return_value = {
+                    'access_token': 'fake_access_token',
+                    'refresh_token': 'fake_refresh_token'
+                }
+                resource_type = TimeSeriesDataType.objects.get(
+                    category=TimeSeriesDataType.activities, resource='steps')
+                utils.get_fitbit_data(
+                    self.fbuser, resource_type, base_date=self.base_date,
+                    period=self.period, end_date=self.end_date)
+
+        self.assertEqual(self.fbuser.access_token, 'fake_access_token')
+        self.assertEqual(self.fbuser.refresh_token, 'fake_refresh_token')
 
 
 class TestRetrievalTask(FitappTestBase):
