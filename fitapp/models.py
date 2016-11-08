@@ -21,12 +21,10 @@ class UserFitbit(models.Model):
         return self.user.__str__()
 
     def refresh_cb(self, token):
-        # Update the token if necessary. We are making sure we have a valid
-        # access_token and refresh_token next time we request Fitbit data
-        if token['access_token'] != self.access_token:
-            self.access_token = token['access_token']
-            self.refresh_token = token['refresh_token']
-            self.save()
+        """ Called when the OAuth token has been refreshed """
+        self.access_token = token['access_token']
+        self.refresh_token = token['refresh_token']
+        self.save()
 
     def get_user_data(self):
         return {
