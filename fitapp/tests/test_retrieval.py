@@ -111,8 +111,9 @@ class TestRetrievalUtility(FitappTestBase):
         with patch.object(FitbitOauth2Client, '_request') as r:
             r.side_effect = [
                 fitbit_exceptions.HTTPUnauthorized(
-                    MagicMock(code=401, content=b'unauth response')),
-                MagicMock(code=200, content='{"activities-steps": [1, 2, 3]}')
+                    MagicMock(status_code=401, content=b'unauth response')),
+                MagicMock(status_code=200,
+                          content=b'{"activities-steps": [1, 2, 3]}')
             ]
             with patch.object(OAuth2Session, 'refresh_token') as rt:
                 rt.return_value = {
