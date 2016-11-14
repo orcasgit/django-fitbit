@@ -67,13 +67,6 @@ def get_fitbit_data(fbuser, resource_type, base_date=None, period=None,
     data = fb.time_series(resource_path, user_id=fbuser.fitbit_user,
                           period=period, base_date=base_date,
                           end_date=end_date)
-
-    # Update the token if necessary. We are making sure we have a valid
-    # access_token and refresh_token next time we request Fitbit data
-    if fb.client.token['access_token'] != fbuser.access_token:
-        fbuser.access_token = fb.client.token['access_token']
-        fbuser.refresh_token = fb.client.token['refresh_token']
-        fbuser.save()
     return data[resource_path.replace('/', '-')]
 
 

@@ -20,11 +20,18 @@ class UserFitbit(models.Model):
     def __str__(self):
         return self.user.__str__()
 
+    def refresh_cb(self, token):
+        """ Called when the OAuth token has been refreshed """
+        self.access_token = token['access_token']
+        self.refresh_token = token['refresh_token']
+        self.save()
+
     def get_user_data(self):
         return {
             'user_id': self.fitbit_user,
             'access_token': self.access_token,
-            'refresh_token': self.refresh_token
+            'refresh_token': self.refresh_token,
+            'refresh_cb': self.refresh_cb,
         }
 
 

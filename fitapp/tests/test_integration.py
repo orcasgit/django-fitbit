@@ -290,8 +290,9 @@ class TestLogoutView(FitappTestBase):
     def test_get(self, apply_async):
         """Logout view should remove associated UserFitbit and redirect."""
         response = self._get()
-        apply_async.assert_called_once_with(kwargs=self.fbuser.get_user_data(),
-                                            countdown=5)
+        kwargs = self.fbuser.get_user_data()
+        del kwargs['refresh_cb']
+        apply_async.assert_called_once_with(kwargs=kwargs, countdown=5)
         self.assertRedirectsNoFollow(
             response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         self.assertEqual(UserFitbit.objects.count(), 0)
@@ -315,8 +316,9 @@ class TestLogoutView(FitappTestBase):
     def test_next(self, apply_async):
         """Logout view should redirect to GET['next'] if available."""
         response = self._get(get_kwargs={'next': '/test'})
-        apply_async.assert_called_with(kwargs=self.fbuser.get_user_data(),
-                                       countdown=5)
+        kwargs = self.fbuser.get_user_data()
+        del kwargs['refresh_cb']
+        apply_async.assert_called_with(kwargs=kwargs, countdown=5)
         self.assertRedirectsNoFollow(response, '/test')
         self.assertEqual(UserFitbit.objects.count(), 0)
 
