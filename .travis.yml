@@ -1,24 +1,10 @@
 language: python
-python: 3.5
-env:
-  # Avoid testing pypy on travis until the following issue is fixed:
-  #   https://github.com/travis-ci/travis-ci/issues/4756
-  #- TOX_ENV=pypy-1.10.X
-  #- TOX_ENV=pypy-1.9.X
-  #- TOX_ENV=pypy-1.8.X
-  - TOX_ENV=py35-trunk
-  - TOX_ENV=py35-1.10.X
-  - TOX_ENV=py35-1.9.X
-  - TOX_ENV=py34-trunk
-  - TOX_ENV=py34-1.10.X
-  - TOX_ENV=py34-1.9.X
-  - TOX_ENV=py34-1.8.X
-  - TOX_ENV=py33-1.8.X
-  - TOX_ENV=py27-1.10.X
-  - TOX_ENV=py27-1.9.X
-  - TOX_ENV=py27-1.8.X
+python:
+  - "2.7"
+  - "3.3"
+  - "3.4"
+  - "3.5"
 install:
-  - pip install coveralls
-  - pip install tox
-script: tox -e $TOX_ENV
+  - pip install coveralls tox-travis
+script: tox
 after_success: coveralls
