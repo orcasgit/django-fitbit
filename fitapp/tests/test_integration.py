@@ -1,8 +1,11 @@
+from collections import OrderedDict
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
+from django.test.utils import override_settings
 from fitbit.exceptions import HTTPConflict
 from mock import patch
 
@@ -165,6 +168,94 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(fbuser.access_token, self.token['access_token'])
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
+
+    @override_settings(FITAPP_HISTORICAL_INIT_DELAY=11)
+    @override_settings(FITAPP_BETWEEN_DELAY=6)
+    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_complete_different_delays(self, tsd_apply_async, sub_apply_async):
+        """Complete view should use configured delays"""
+        tsdts = TimeSeriesDataType.objects.all()
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
+        fbuser = UserFitbit.objects.get()
+
+        self.assertRedirectsNoFollow(
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        for i, _type in enumerate(tsdts):
+            tsd_apply_async.assert_any_call(
+                (fbuser.fitbit_user, _type.category, _type.resource,),
+                countdown=11 + (i * 6))
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([]))
+    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_complete_empty_subs(self, tsd_apply_async, sub_apply_async):
+        """Complete view should not import data if subs dict is empty"""
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
+
+        self.assertRedirectsNoFollow(
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        self.assertEqual(tsd_apply_async.call_count, 0)
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([('foods', [])]))
+    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_complete_no_res(self, tsd_apply_async, sub_apply_async):
+        """Complete view shouldn't import data if subs dict has no resources"""
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
+
+        self.assertRedirectsNoFollow(
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        self.assertEqual(tsd_apply_async.call_count, 0)
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
+        ('foods', ['fake', 'steps'])
+    ]))
+    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_complete_bad_resources(self, tsd_apply_async, sub_apply_async):
+        """
+        Complete view shouldn't import data if subs dict has invalid resources
+        """
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
+
+        self.assertRedirectsNoFollow(
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        self.assertEqual(tsd_apply_async.call_count, 0)
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
+        ('activities', ['steps', 'calories', 'distance', 'activityCalories']),
+        ('foods', ['log/water']),
+    ]))
+    @patch('fitapp.tasks.subscribe.apply_async')
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_complete_sub_list(self, tsd_apply_async, sub_apply_async):
+        """
+        Complete view should only import the listed subscriptions, in the right
+        order
+        """
+        activities = TimeSeriesDataType.activities
+        response = self._mock_client(
+            client_kwargs=self.token, get_kwargs={'code': self.code})
+        fbuser = UserFitbit.objects.get()
+
+        self.assertRedirectsNoFollow(
+            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, activities, 'steps',), countdown=10)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, activities, 'calories',), countdown=15)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, activities, 'distance',), countdown=20)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, activities, 'activityCalories'), countdown=25)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, TimeSeriesDataType.foods, 'log/water',),
+            countdown=30)
 
     @patch('fitapp.tasks.subscribe.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')

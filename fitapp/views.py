@@ -1,3 +1,4 @@
+from functools import cmp_to_key
 import simplejson as json
 
 from dateutil import parser
@@ -98,18 +99,38 @@ def complete(request):
     # Add the Fitbit user info to the session
     request.session['fitbit_profile'] = fb.user_profile_get()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
+        init_delay = utils.get_setting('FITAPP_HISTORICAL_INIT_DELAY')
+        btw_delay = utils.get_setting('FITAPP_BETWEEN_DELAY')
+        subs = utils.get_setting('FITAPP_SUBSCRIPTIONS')
         try:
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
             return redirect(reverse('fitbit-error'))
         subscribe.apply_async((fbuser.fitbit_user, SUBSCRIBER_ID), countdown=5)
+        tsdts = TimeSeriesDataType.objects.all()
+        # If FITAPP_SUBSCRIPTIONS is specified, narrow the list of data types
+        # to retrieve
+        if subs is not None:
+            cats = list(map(
+                lambda k: getattr(TimeSeriesDataType, k),
+                subs.keys()
+            ))
+            tsdts = tsdts.filter(category__in=cats)
+            # Combine all the resource sublists from FITAPP_SUBSCRIPTIONS
+            res = [res for _, sublist in subs.items() for res in sublist]
+            tsdts = tsdts.filter(resource__in=res)
+            # Sort as specified in FITAPP_SUBSCRIPTIONS
+            tsdts = sorted(tsdts, key=lambda tsdt: (
+                cats.index(tsdt.category) + res.index(tsdt.resource)
+            ))
+
         # Create tasks for all data in all data types
-        for i, _type in enumerate(TimeSeriesDataType.objects.all()):
+        for i, _type in enumerate(tsdts):
             # Delay execution for a few seconds to speed up response
-            # Offset each call by 2 seconds so they don't bog down the server
+            # Offset each call a bit so they don't bog down the server
             get_time_series_data.apply_async(
                 (fbuser.fitbit_user, _type.category, _type.resource,),
-                countdown=10 + (i * 5))
+                countdown=init_delay + (i * btw_delay))
 
     next_url = request.session.pop('fitbit_next', None) or utils.get_setting(
         'FITAPP_LOGIN_REDIRECT')
@@ -224,16 +245,28 @@ def update(request):
 
         try:
             # Create a celery task for each data type in the update
+            subs = utils.get_setting('FITAPP_SUBSCRIPTIONS')
+            btw_delay = utils.get_setting('FITAPP_BETWEEN_DELAY')
+            all_tsdts = list(TimeSeriesDataType.objects.all())
             for update in updates:
-                cat = getattr(TimeSeriesDataType, update['collectionType'])
-                resources = TimeSeriesDataType.objects.filter(category=cat)
-                for i, _type in enumerate(resources):
-                    # Offset each call by 2 seconds so they don't bog down the
-                    # server
+                c_type = update['collectionType']
+                if subs is not None and c_type not in subs:
+                    continue
+                cat = getattr(TimeSeriesDataType, c_type)
+                tsdts = filter(lambda tsdt: tsdt.category == cat, all_tsdts)
+                if subs is not None:
+                    res_list = subs[c_type]
+                    tsdts = sorted(
+                        filter(lambda tsdt: tsdt.resource in res_list, tsdts),
+                        key=lambda tsdt: res_list.index(tsdt.resource)
+                    )
+                for i, _type in enumerate(tsdts):
+                    # Offset each call by a few seconds so they don't bog down
+                    # the server
                     get_time_series_data.apply_async(
                         (update['ownerId'], _type.category, _type.resource,),
                         {'date': parser.parse(update['date'])},
-                        countdown=(2 * i))
+                        countdown=(btw_delay * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
 

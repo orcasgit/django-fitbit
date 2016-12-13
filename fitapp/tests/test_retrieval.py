@@ -4,6 +4,7 @@ import celery
 import json
 import sys
 
+from collections import OrderedDict
 from dateutil import parser
 from django.core.cache import cache
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -137,13 +138,16 @@ class TestRetrievalTask(FitappTestBase):
         self.date = '2013-05-02'
         self.value = 10
 
-    def _receive_fitbit_updates(self, file=False):
-        d = json.dumps([{
+    def _receive_fitbit_updates(self, file=False, extra_data=None):
+        base_data = [{
             'subscriptionId': self.fbuser.user.id,
             'ownerId': self.fbuser.fitbit_user,
             'collectionType': self.category,
             'date': self.date
-        }]).encode('utf8')
+        }]
+        if extra_data is not None:
+            base_data.append(extra_data)
+        d = json.dumps(base_data).encode('utf8')
         kwargs = {'data': d, 'content_type': 'application/json'}
         if file:
             updates_stringio = BytesIO(d)
@@ -190,6 +194,79 @@ class TestRetrievalTask(FitappTestBase):
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
             assert tsd.value, self.value
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([]))
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_empty_subs(self, get_fitbit_data):
+        # Check that an empty dict of subscriptions results in no retrieval
+        date = parser.parse(self.date)
+        self._receive_fitbit_updates(file=True)
+
+        self.assertEqual(get_fitbit_data.call_count, 0)
+        self.assertEqual(
+            TimeSeriesData.objects.filter(user=self.user, date=date).count(),
+            0
+        )
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
+        ('foods', ['log/caloriesIn', 'log/water']),
+    ]))
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_no_matching_subs(self, get_fitbit_data):
+        # Check that we retrieve no data if there are no matching resources
+        # in the FITAPP_SUBSCRIPTIONS dict
+        date = parser.parse(self.date)
+        self._receive_fitbit_updates(file=True)
+
+        self.assertEqual(get_fitbit_data.call_count, 0)
+        self.assertEqual(
+            TimeSeriesData.objects.filter(user=self.user, date=date).count(),
+            0
+        )
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
+        ('foods', ['log/water', 'log/caloriesIn']),
+    ]))
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_subscription_update_file_part_match_subs(self, tsd_apply_async):
+        # Check that we only retrieve the data requested
+        fbuser = UserFitbit.objects.get()
+        foods = TimeSeriesDataType.foods
+        kwargs = {'date': parser.parse(self.date)}
+        self._receive_fitbit_updates(file=True, extra_data={
+            'subscriptionId': self.fbuser.user.id,
+            'ownerId': self.fbuser.fitbit_user,
+            'collectionType': 'foods',
+            'date': self.date
+        })
+
+        self.assertEqual(tsd_apply_async.call_count, 2)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, foods, 'log/water',), kwargs, countdown=0)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, foods, 'log/caloriesIn'), kwargs, countdown=5)
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
+        ('foods', ['log/water', 'log/caloriesIn', 'bogus']),
+    ]))
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_subscription_update_file_ignore_bogus(self, tsd_apply_async):
+        # Check that we only retrieve the data requested
+        fbuser = UserFitbit.objects.get()
+        foods = TimeSeriesDataType.foods
+        kwargs = {'date': parser.parse(self.date)}
+        self._receive_fitbit_updates(file=True, extra_data={
+            'subscriptionId': self.fbuser.user.id,
+            'ownerId': self.fbuser.fitbit_user,
+            'collectionType': 'foods',
+            'date': self.date
+        })
+
+        self.assertEqual(tsd_apply_async.call_count, 2)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, foods, 'log/water',), kwargs, countdown=0)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, foods, 'log/caloriesIn'), kwargs, countdown=5)
 
     @patch('fitapp.utils.get_fitbit_data')
     @patch('django.core.cache.cache.add')
