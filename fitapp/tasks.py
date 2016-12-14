@@ -1,4 +1,5 @@
 import logging
+import random
 import sys
 
 from celery import shared_task
@@ -25,8 +26,7 @@ def subscribe(fitbit_user, subscriber_id):
         fb = utils.create_fitbit(**fbuser.get_user_data())
         try:
             fb.subscription(fbuser.user.id, subscriber_id)
-        except:
-            exc = sys.exc_info()[1]
+        except Exception as exc:
             logger.exception("Error subscribing user: %s" % exc)
             raise Reject(exc, requeue=False)
 
@@ -41,14 +41,13 @@ def unsubscribe(*args, **kwargs):
             if sub['ownerId'] == kwargs['user_id']:
                 fb.subscription(sub['subscriptionId'], sub['subscriberId'],
                                 method="DELETE")
-    except:
-        exc = sys.exc_info()[1]
+    except Exception as exc:
         logger.exception("Error unsubscribing user: %s" % exc)
         raise Reject(exc, requeue=False)
 
 
-@shared_task
-def get_time_series_data(fitbit_user, cat, resource, date=None):
+@shared_task(bind=True)
+def get_time_series_data(self, fitbit_user, cat, resource, date=None):
     """ Get the user's time series data """
 
     try:
@@ -87,22 +86,25 @@ def get_time_series_data(fitbit_user, cat, resource, date=None):
                     tsd.save()
             # Release the lock
             cache.delete(lock_id)
-    except HTTPTooManyRequests:
+    except HTTPTooManyRequests as e:
         # We have hit the rate limit for the user, retry when it's reset,
         # according to the reply from the failing API call
-        e = sys.exc_info()[1]
         logger.debug('Rate limit reached, will try again in %s seconds' %
                      e.retry_after_secs)
-        raise get_time_series_data.retry(exc=e, countdown=e.retry_after_secs)
-    except HTTPBadRequest:
+        raise get_time_series_data.retry(
+            exc=e,
+            countdown=e.retry_after_secs + int(
+                # Exponential back-off + random jitter
+                random.uniform(2, 4) ** self.request.retries
+            )
+        )
+    except HTTPBadRequest as exc:
         # If the resource is elevation or floors, we are just getting this
         # error because the data doesn't exist for this user, so we can ignore
         # the error
         if not ('elevation' in resource or 'floors' in resource):
-            exc = sys.exc_info()[1]
             logger.exception("Exception updating data: %s" % exc)
             raise Reject(exc, requeue=False)
-    except Exception:
-        exc = sys.exc_info()[1]
+    except Exception as exc:
         logger.exception("Exception updating data: %s" % exc)
         raise Reject(exc, requeue=False)

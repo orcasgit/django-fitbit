@@ -310,6 +310,32 @@ class TestRetrievalTask(FitappTestBase):
         self.assertEqual(TimeSeriesData.objects.count(), 1)
         self.assertEqual(TimeSeriesData.objects.get().value, '34')
 
+    @patch('fitapp.tasks.get_time_series_data.retry')
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_too_many_retry(self, get_fitbit_data, mock_retry):
+        # Check that retry is called with the right arguments
+        exc = fitbit_exceptions.HTTPTooManyRequests(self._error_response())
+        exc.retry_after_secs = 21
+        get_fitbit_data.side_effect = exc
+        # This return value is just to keep celery from throwing up
+        mock_retry.return_value = Exception()
+        category = getattr(TimeSeriesDataType, self.category)
+        _type = TimeSeriesDataType.objects.filter(category=category)[0]
+        resources = TimeSeriesDataType.objects.filter(category=category)
+
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+
+        # 22 = 21 + x ** 0
+        get_time_series_data.retry.assert_called_once_with(
+            countdown=22, exc=exc)
+        self.assertRaises(Exception, result.get)
+        self.assertEqual(get_fitbit_data.call_count, 1)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
     def test_problem_queueing_task(self):
         get_time_series_data = MagicMock()
         # If queueing the task raises an exception, it doesn't propagate
