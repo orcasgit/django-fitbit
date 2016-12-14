@@ -223,8 +223,11 @@ class TestCompleteView(FitappTestBase):
         response = self._mock_client(
             client_kwargs=self.token, get_kwargs={'code': self.code})
 
-        self.assertRedirectsNoFollow(
-            response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            response.content,
+            "['steps', 'fake'] resources are invalid for the foods category"
+        )
         self.assertEqual(tsd_apply_async.call_count, 0)
 
     @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([

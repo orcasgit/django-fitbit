@@ -138,7 +138,7 @@ class TestRetrievalTask(FitappTestBase):
         self.date = '2013-05-02'
         self.value = 10
 
-    def _receive_fitbit_updates(self, file=False, extra_data=None):
+    def _receive_fitbit_updates(self, status_code=204, file=False, extra_data=None):
         base_data = [{
             'subscriptionId': self.fbuser.user.id,
             'ownerId': self.fbuser.fitbit_user,
@@ -155,7 +155,8 @@ class TestRetrievalTask(FitappTestBase):
                 updates_stringio, None, 'updates', 'text', len(d), None)
             kwargs = {'data': {'updates': updates}}
         res = self.client.post(reverse('fitbit-update'), **kwargs)
-        assert res.status_code, 204
+
+        assert res.status_code == status_code
 
     @patch('fitapp.utils.get_fitbit_data')
     def test_subscription_update(self, get_fitbit_data):
@@ -250,23 +251,19 @@ class TestRetrievalTask(FitappTestBase):
         ('foods', ['log/water', 'log/caloriesIn', 'bogus']),
     ]))
     @patch('fitapp.tasks.get_time_series_data.apply_async')
-    def test_subscription_update_file_ignore_bogus(self, tsd_apply_async):
+    def test_subscription_update_file_bogus_error(self, tsd_apply_async):
         # Check that we only retrieve the data requested
         fbuser = UserFitbit.objects.get()
         foods = TimeSeriesDataType.foods
         kwargs = {'date': parser.parse(self.date)}
-        self._receive_fitbit_updates(file=True, extra_data={
+        self._receive_fitbit_updates(status_code=500, file=True, extra_data={
             'subscriptionId': self.fbuser.user.id,
             'ownerId': self.fbuser.fitbit_user,
             'collectionType': 'foods',
             'date': self.date
         })
 
-        self.assertEqual(tsd_apply_async.call_count, 2)
-        tsd_apply_async.assert_any_call(
-            (fbuser.fitbit_user, foods, 'log/water',), kwargs, countdown=0)
-        tsd_apply_async.assert_any_call(
-            (fbuser.fitbit_user, foods, 'log/caloriesIn'), kwargs, countdown=5)
+        self.assertEqual(tsd_apply_async.call_count, 0)
 
     @patch('fitapp.utils.get_fitbit_data')
     @patch('django.core.cache.cache.add')

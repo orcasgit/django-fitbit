@@ -4,7 +4,7 @@ from django.core.exceptions import ImproperlyConfigured
 from fitbit import Fitbit
 
 from . import defaults
-from .models import UserFitbit
+from .models import UserFitbit, TimeSeriesDataType
 
 
 def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
@@ -78,9 +78,33 @@ def get_setting(name, use_defaults=True):
     ImproperlyConfigured exception for the setting.
     """
     if hasattr(settings, name):
-        return getattr(settings, name)
+        return _verified_setting(name)
     if use_defaults:
         if hasattr(defaults, name):
             return getattr(defaults, name)
     msg = "{0} must be specified in your settings".format(name)
     raise ImproperlyConfigured(msg)
+
+
+def _verified_setting(name):
+    result = getattr(settings, name)
+    if name == 'FITAPP_SUBSCRIPTIONS':
+        # Check that the subscription list is valid
+        try:
+            items = result.items()
+        except AttributeError:
+            msg = '{} must be a dict or an OrderedDict'.format(name)
+            raise ImproperlyConfigured(msg)
+        # Only make one query, which will be cached for later use
+        all_tsdt = list(TimeSeriesDataType.objects.all())
+        for cat, res in items:
+            tsdts = filter(lambda t: t.get_category_display() == cat, all_tsdt)
+            if not tsdts:
+                msg = '{} is an invalid category'.format(cat)
+                raise ImproperlyConfigured(msg)
+            all_cat_res = set(map(lambda tsdt: tsdt.resource, tsdts))
+            if set(res) & all_cat_res != set(res):
+                msg = '{0} resources are invalid for the {1} category'.format(
+                    list(set(res) - (set(res) & all_cat_res)), cat)
+                raise ImproperlyConfigured(msg)
+    return result

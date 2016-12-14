@@ -8,7 +8,7 @@ from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
 from django.dispatch import receiver
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, HttpResponseServerError, Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -101,7 +101,10 @@ def complete(request):
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         init_delay = utils.get_setting('FITAPP_HISTORICAL_INIT_DELAY')
         btw_delay = utils.get_setting('FITAPP_BETWEEN_DELAY')
-        subs = utils.get_setting('FITAPP_SUBSCRIPTIONS')
+        try:
+            subs = utils.get_setting('FITAPP_SUBSCRIPTIONS')
+        except ImproperlyConfigured as e:
+            return HttpResponseServerError(e.message)
         try:
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
@@ -269,6 +272,8 @@ def update(request):
                         countdown=(btw_delay * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
+        except ImproperlyConfigured as e:
+            return HttpResponseServerError(e.message)
 
         return HttpResponse(status=204)
     elif request.method == 'GET':
