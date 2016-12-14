@@ -175,7 +175,7 @@ class TestRetrievalTask(FitappTestBase):
                 ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
-            assert tsd.value, self.value
+            assert tsd.value == self.value
 
     @patch('fitapp.utils.get_fitbit_data')
     def test_subscription_update_file(self, get_fitbit_data):
@@ -194,7 +194,7 @@ class TestRetrievalTask(FitappTestBase):
                 ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
-            assert tsd.value, self.value
+            assert tsd.value == self.value
 
     @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([]))
     @patch('fitapp.utils.get_fitbit_data')
