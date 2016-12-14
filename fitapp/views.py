@@ -104,7 +104,7 @@ def complete(request):
         try:
             subs = utils.get_setting('FITAPP_SUBSCRIPTIONS')
         except ImproperlyConfigured as e:
-            return HttpResponseServerError(e.message)
+            return HttpResponseServerError(getattr(e, 'message', e.args[0]))
         try:
             SUBSCRIBER_ID = utils.get_setting('FITAPP_SUBSCRIBER_ID')
         except ImproperlyConfigured:
@@ -273,7 +273,7 @@ def update(request):
         except (KeyError, ValueError, OverflowError):
             raise Http404
         except ImproperlyConfigured as e:
-            return HttpResponseServerError(e.message)
+            return HttpResponseServerError(getattr(e, 'message', e.args[0]))
 
         return HttpResponse(status=204)
     elif request.method == 'GET':

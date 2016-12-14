@@ -212,7 +212,7 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(tsd_apply_async.call_count, 0)
 
     @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
-        ('foods', ['fake', 'steps'])
+        ('foods', ['steps'])
     ]))
     @patch('fitapp.tasks.subscribe.apply_async')
     @patch('fitapp.tasks.get_time_series_data.apply_async')
@@ -223,10 +223,10 @@ class TestCompleteView(FitappTestBase):
         response = self._mock_client(
             client_kwargs=self.token, get_kwargs={'code': self.code})
 
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(
-            response.content,
-            "['steps', 'fake'] resources are invalid for the foods category"
+        self.assertContains(
+            response,
+            "['steps'] resources are invalid for the foods category",
+            status_code=500
         )
         self.assertEqual(tsd_apply_async.call_count, 0)
 

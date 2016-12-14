@@ -98,7 +98,7 @@ def _verified_setting(name):
         # Only make one query, which will be cached for later use
         all_tsdt = list(TimeSeriesDataType.objects.all())
         for cat, res in items:
-            tsdts = filter(lambda t: t.get_category_display() == cat, all_tsdt)
+            tsdts = list(filter(lambda t: t.get_category_display() == cat, all_tsdt))
             if not tsdts:
                 msg = '{} is an invalid category'.format(cat)
                 raise ImproperlyConfigured(msg)
