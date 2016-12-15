@@ -1,3 +1,12 @@
+0.2.6 (2016-12-14)
+==================
+
+- Add exponential back-off and random jitter to task retries
+- Enable some configuration around subscriptions:
+  - FITAPP_SUBSCRIPTIONS: List exactly which subscriptions to retrieve and the order to retrieve them in
+  - FITAPP_HISTORICAL_INIT_DELAY: The initial delay (in seconds) to wait before retrieving any historic data
+  - FITAPP_BETWEEN_DELAY: The delay (in seconds) to wait between retrieving each type of resource
+
 0.2.5 (2016-11-03)
 ==================
 
