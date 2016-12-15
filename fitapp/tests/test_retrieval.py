@@ -375,6 +375,21 @@ class TestRetrievalTask(FitappTestBase):
         self.assertEqual(result.result.reason, exc)
         self.assertEqual(TimeSeriesData.objects.count(), 0)
 
+    def test_subscription_update_bad_resource(self):
+        # Make sure a resource we don't have yet is handled
+        res = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, 0, 'new_resource',),
+            {'date': parser.parse(self.date)})
+
+        self.assertEqual(res.successful(), False)
+        self.assertEqual(type(res.result), celery.exceptions.Reject)
+        self.assertEqual(
+            type(res.result.reason), TimeSeriesDataType.DoesNotExist)
+        self.assertEqual(
+            getattr(res.result.reason, 'message', res.result.reason.args[0]),
+            'TimeSeriesDataType matching query does not exist.')
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
     def test_problem_queueing_task(self):
         get_time_series_data = MagicMock()
         # If queueing the task raises an exception, it doesn't propagate
