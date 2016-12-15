@@ -321,7 +321,6 @@ class TestRetrievalTask(FitappTestBase):
         mock_retry.return_value = Exception()
         category = getattr(TimeSeriesDataType, self.category)
         _type = TimeSeriesDataType.objects.filter(category=category)[0]
-        resources = TimeSeriesDataType.objects.filter(category=category)
 
         self.assertEqual(TimeSeriesData.objects.count(), 0)
 
@@ -334,6 +333,46 @@ class TestRetrievalTask(FitappTestBase):
             countdown=22, exc=exc)
         self.assertRaises(Exception, result.get)
         self.assertEqual(get_fitbit_data.call_count, 1)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_bad_request(self, get_fitbit_data):
+        # Make sure bad requests for floors and elevation are ignored,
+        # otherwise Reject exception is raised
+        exc = fitbit_exceptions.HTTPBadRequest('HI')
+        get_fitbit_data.side_effect = exc
+        _type = TimeSeriesDataType.objects.get(
+            category=TimeSeriesDataType.activities, resource='elevation')
+
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+
+        self.assertEqual(result.successful(), True)
+        self.assertEqual(result.result, None)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+        _type = TimeSeriesDataType.objects.get(
+            category=TimeSeriesDataType.activities, resource='floors')
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+
+        self.assertEqual(result.successful(), True)
+        self.assertEqual(result.result, None)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+        _type = TimeSeriesDataType.objects.get(
+            category=TimeSeriesDataType.activities, resource='steps')
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+
+        self.assertEqual(result.successful(), False)
+        self.assertEqual(type(result.result), celery.exceptions.Reject)
+        self.assertEqual(result.result.reason, exc)
         self.assertEqual(TimeSeriesData.objects.count(), 0)
 
     def test_problem_queueing_task(self):
