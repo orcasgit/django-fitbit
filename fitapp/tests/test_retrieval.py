@@ -4,6 +4,7 @@ import celery
 import json
 import sys
 
+from collections import OrderedDict
 from dateutil import parser
 from django.core.cache import cache
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -137,13 +138,16 @@ class TestRetrievalTask(FitappTestBase):
         self.date = '2013-05-02'
         self.value = 10
 
-    def _receive_fitbit_updates(self, file=False):
-        d = json.dumps([{
+    def _receive_fitbit_updates(self, status_code=204, file=False, extra_data=None):
+        base_data = [{
             'subscriptionId': self.fbuser.user.id,
             'ownerId': self.fbuser.fitbit_user,
             'collectionType': self.category,
             'date': self.date
-        }]).encode('utf8')
+        }]
+        if extra_data is not None:
+            base_data.append(extra_data)
+        d = json.dumps(base_data).encode('utf8')
         kwargs = {'data': d, 'content_type': 'application/json'}
         if file:
             updates_stringio = BytesIO(d)
@@ -151,7 +155,8 @@ class TestRetrievalTask(FitappTestBase):
                 updates_stringio, None, 'updates', 'text', len(d), None)
             kwargs = {'data': {'updates': updates}}
         res = self.client.post(reverse('fitbit-update'), **kwargs)
-        assert res.status_code, 204
+
+        assert res.status_code == status_code
 
     @patch('fitapp.utils.get_fitbit_data')
     def test_subscription_update(self, get_fitbit_data):
@@ -170,7 +175,7 @@ class TestRetrievalTask(FitappTestBase):
                 ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
-            assert tsd.value, self.value
+            assert tsd.value == self.value
 
     @patch('fitapp.utils.get_fitbit_data')
     def test_subscription_update_file(self, get_fitbit_data):
@@ -189,7 +194,76 @@ class TestRetrievalTask(FitappTestBase):
                 ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
-            assert tsd.value, self.value
+            assert tsd.value == self.value
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([]))
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_empty_subs(self, get_fitbit_data):
+        # Check that an empty dict of subscriptions results in no retrieval
+        date = parser.parse(self.date)
+        self._receive_fitbit_updates(file=True)
+
+        self.assertEqual(get_fitbit_data.call_count, 0)
+        self.assertEqual(
+            TimeSeriesData.objects.filter(user=self.user, date=date).count(),
+            0
+        )
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
+        ('foods', ['log/caloriesIn', 'log/water']),
+    ]))
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_no_matching_subs(self, get_fitbit_data):
+        # Check that we retrieve no data if there are no matching resources
+        # in the FITAPP_SUBSCRIPTIONS dict
+        date = parser.parse(self.date)
+        self._receive_fitbit_updates(file=True)
+
+        self.assertEqual(get_fitbit_data.call_count, 0)
+        self.assertEqual(
+            TimeSeriesData.objects.filter(user=self.user, date=date).count(),
+            0
+        )
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
+        ('foods', ['log/water', 'log/caloriesIn']),
+    ]))
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_subscription_update_file_part_match_subs(self, tsd_apply_async):
+        # Check that we only retrieve the data requested
+        fbuser = UserFitbit.objects.get()
+        foods = TimeSeriesDataType.foods
+        kwargs = {'date': parser.parse(self.date)}
+        self._receive_fitbit_updates(file=True, extra_data={
+            'subscriptionId': self.fbuser.user.id,
+            'ownerId': self.fbuser.fitbit_user,
+            'collectionType': 'foods',
+            'date': self.date
+        })
+
+        self.assertEqual(tsd_apply_async.call_count, 2)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, foods, 'log/water',), kwargs, countdown=0)
+        tsd_apply_async.assert_any_call(
+            (fbuser.fitbit_user, foods, 'log/caloriesIn'), kwargs, countdown=5)
+
+    @override_settings(FITAPP_SUBSCRIPTIONS=OrderedDict([
+        ('foods', ['log/water', 'log/caloriesIn', 'bogus']),
+    ]))
+    @patch('fitapp.tasks.get_time_series_data.apply_async')
+    def test_subscription_update_file_bogus_error(self, tsd_apply_async):
+        # Check that we only retrieve the data requested
+        fbuser = UserFitbit.objects.get()
+        foods = TimeSeriesDataType.foods
+        kwargs = {'date': parser.parse(self.date)}
+        self._receive_fitbit_updates(status_code=500, file=True, extra_data={
+            'subscriptionId': self.fbuser.user.id,
+            'ownerId': self.fbuser.fitbit_user,
+            'collectionType': 'foods',
+            'date': self.date
+        })
+
+        self.assertEqual(tsd_apply_async.call_count, 0)
 
     @patch('fitapp.utils.get_fitbit_data')
     @patch('django.core.cache.cache.add')
@@ -235,6 +309,71 @@ class TestRetrievalTask(FitappTestBase):
         self.assertEqual(get_fitbit_data.call_count, 2)
         self.assertEqual(TimeSeriesData.objects.count(), 1)
         self.assertEqual(TimeSeriesData.objects.get().value, '34')
+
+    @patch('fitapp.tasks.get_time_series_data.retry')
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_too_many_retry(self, get_fitbit_data, mock_retry):
+        # Check that retry is called with the right arguments
+        exc = fitbit_exceptions.HTTPTooManyRequests(self._error_response())
+        exc.retry_after_secs = 21
+        get_fitbit_data.side_effect = exc
+        # This return value is just to keep celery from throwing up
+        mock_retry.return_value = Exception()
+        category = getattr(TimeSeriesDataType, self.category)
+        _type = TimeSeriesDataType.objects.filter(category=category)[0]
+
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+
+        # 22 = 21 + x ** 0
+        get_time_series_data.retry.assert_called_once_with(
+            countdown=22, exc=exc)
+        self.assertRaises(Exception, result.get)
+        self.assertEqual(get_fitbit_data.call_count, 1)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+    @patch('fitapp.utils.get_fitbit_data')
+    def test_subscription_update_bad_request(self, get_fitbit_data):
+        # Make sure bad requests for floors and elevation are ignored,
+        # otherwise Reject exception is raised
+        exc = fitbit_exceptions.HTTPBadRequest('HI')
+        get_fitbit_data.side_effect = exc
+        _type = TimeSeriesDataType.objects.get(
+            category=TimeSeriesDataType.activities, resource='elevation')
+
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+
+        self.assertEqual(result.successful(), True)
+        self.assertEqual(result.result, None)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+        _type = TimeSeriesDataType.objects.get(
+            category=TimeSeriesDataType.activities, resource='floors')
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+
+        self.assertEqual(result.successful(), True)
+        self.assertEqual(result.result, None)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
+
+        _type = TimeSeriesDataType.objects.get(
+            category=TimeSeriesDataType.activities, resource='steps')
+        result = get_time_series_data.apply_async(
+            (self.fbuser.fitbit_user, _type.category, _type.resource,),
+            {'date': parser.parse(self.date)})
+
+        self.assertEqual(result.successful(), False)
+        self.assertEqual(type(result.result), celery.exceptions.Reject)
+        self.assertEqual(result.result.reason, exc)
+        self.assertEqual(TimeSeriesData.objects.count(), 0)
 
     def test_problem_queueing_task(self):
         get_time_series_data = MagicMock()
