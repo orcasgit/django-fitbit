@@ -3,5 +3,5 @@
 
 django-debug-toolbar
 sphinx
-django>=1.8
-tox>=1.8
+django>=1.8,<1.11
+tox>=1.8,<2.4
