@@ -44,7 +44,9 @@ class Command(BaseCommand):
                     user_fitbit.delete()
                 failed += 1
         msg = 'Successfully refreshed {} tokens'.format(success)
-        self.stdout.write(self.style.SUCCESS(msg))
+        # Django 1.8 doesn't have the SUCCESS style, fallback to WARNING
+        success_style = getattr(self.style, 'SUCCESS', self.style.WARNING)
+        self.stdout.write(success_style(msg))
         if failed > 0:
             msg = 'Failed to refresh {} tokens'.format(failed)
             self.stdout.write(self.style.ERROR(msg))

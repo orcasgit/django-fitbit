@@ -21,8 +21,7 @@ class TestCommands(FitappTestBase):
         """Test the refresh_tokens command."""
 
         out = StringIO()
-        command = refresh_tokens.Command()
-        management.call_command(command, stdout=out)
+        management.call_command('refresh_tokens', stdout=out)
 
         self.assertIn('Successfully refreshed 0 tokens', out.getvalue())
 
@@ -35,7 +34,7 @@ class TestCommands(FitappTestBase):
                 'refresh_token': 'fake_refresh_token',
                 'expires_at': time.time() + 300,
             }))
-            management.call_command(command, stdout=out)
+            management.call_command('refresh_tokens', stdout=out)
         self.fbuser = UserFitbit.objects.get()
 
         self.assertIn('Successfully refreshed 1 tokens', out.getvalue())
@@ -50,7 +49,7 @@ class TestCommands(FitappTestBase):
                 'refresh_token': 'fake_refresh_token2',
                 'expires_at': time.time() + 300,
             }))
-            management.call_command(command, all=True, stdout=out)
+            management.call_command('refresh_tokens', all=True, stdout=out)
         self.fbuser = UserFitbit.objects.get()
 
         self.assertIn('Successfully refreshed 1 tokens', out.getvalue())
@@ -63,7 +62,7 @@ class TestCommands(FitappTestBase):
             m.post(FitbitOauth2Client.refresh_token_url, text=json.dumps({
                 'errors': [{'errorType': 'invalid_grant'}],
             }))
-            management.call_command(command, all=True, stdout=out)
+            management.call_command('refresh_tokens', all=True, stdout=out)
 
         self.assertIn('Successfully refreshed 0 tokens', out.getvalue())
         self.assertIn('Failed to refresh 1 tokens', out.getvalue())
@@ -73,7 +72,7 @@ class TestCommands(FitappTestBase):
             m.post(FitbitOauth2Client.refresh_token_url, text=json.dumps({
                 'errors': [{'errorType': 'invalid_grant'}],
             }))
-            management.call_command(command, all=True, deauth=True, stdout=out)
+            management.call_command('refresh_tokens', all=True, deauth=True, stdout=out)
 
         self.assertIn('Successfully refreshed 0 tokens', out.getvalue())
         self.assertIn('Failed to refresh 1 tokens', out.getvalue())
