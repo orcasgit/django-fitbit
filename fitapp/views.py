@@ -90,13 +90,16 @@ def complete(request):
     if UserFitbit.objects.filter(fitbit_user=fitbit_user).exists():
         return redirect(reverse('fitbit-error'))
 
-    fbuser, _ = UserFitbit.objects.get_or_create(user=request.user)
-    fbuser.access_token = access_token
-    fbuser.fitbit_user = fitbit_user
-    fbuser.refresh_token = token['refresh_token']
-    fbuser.save()
+    user = request.user
+    fbuser, _ = UserFitbit.objects.update_or_create(user=user, defaults={
+        'fitbit_user': fitbit_user,
+        'access_token': access_token,
+        'refresh_token': token['refresh_token'],
+        'expires_at': token['expires_at'],
+    })
 
     # Add the Fitbit user info to the session
+    fb = utils.create_fitbit(**fbuser.get_user_data())
     request.session['fitbit_profile'] = fb.user_profile_get()
     if utils.get_setting('FITAPP_SUBSCRIBE'):
         init_delay = utils.get_setting('FITAPP_HISTORICAL_INIT_DELAY')

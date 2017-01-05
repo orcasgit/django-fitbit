@@ -1,3 +1,5 @@
+import time
+
 from collections import OrderedDict
 
 from django.conf import settings
@@ -139,6 +141,7 @@ class TestCompleteView(FitappTestBase):
     token = {
         'access_token': 'AccessToken123',
         'refresh_token': 'RefreshToken123',
+        'expires_at': time.time() + 300,
         'user_id': user_id
     }
     code = 'Code123'
@@ -304,6 +307,7 @@ class TestCompleteView(FitappTestBase):
         self.assertEqual(fbuser.user, self.user)
         self.assertEqual(fbuser.access_token, self.token['access_token'])
         self.assertEqual(fbuser.refresh_token, self.token['refresh_token'])
+        self.assertEqual(fbuser.expires_at, self.token['expires_at'])
         self.assertEqual(fbuser.fitbit_user, self.user_id)
 
     def test_access_error(self):

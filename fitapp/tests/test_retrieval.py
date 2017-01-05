@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import celery
 import json
 import sys
+import time
 
 from collections import OrderedDict
 from dateutil import parser
@@ -109,17 +110,19 @@ class TestRetrievalUtility(FitappTestBase):
     def test_refresh(self):
         """If token expires, it should refresh automatically"""
 
-        with patch.object(FitbitOauth2Client, '_request') as r:
+        with patch.object(OAuth2Session, 'request') as r:
             r.side_effect = [
-                fitbit_exceptions.HTTPUnauthorized(
-                    MagicMock(status_code=401, content=b'unauth response')),
+                MagicMock(
+                    status_code=401,
+                    content=b'{"errors": [{"errorType": "expired_token"}]}'),
                 MagicMock(status_code=200,
                           content=b'{"activities-steps": [1, 2, 3]}')
             ]
             with patch.object(OAuth2Session, 'refresh_token') as rt:
                 rt.return_value = {
                     'access_token': 'fake_access_token',
-                    'refresh_token': 'fake_refresh_token'
+                    'refresh_token': 'fake_refresh_token',
+                    'expires_at': time.time() + 300,
                 }
                 resource_type = TimeSeriesDataType.objects.get(
                     category=TimeSeriesDataType.activities, resource='steps')

@@ -2,3 +2,5 @@ fitbit>=0.2.4
 celery>=3.1.13
 simplejson
 six
+
+git+ssh://git@github.com/orcasgit/python-fitbit@c0b07d256679870e6285671a2285c4ba8e68ad84
