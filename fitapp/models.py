@@ -14,7 +14,6 @@ class UserFitbit(models.Model):
     fitbit_user = models.CharField(
         max_length=32, unique=True, help_text='The fitbit user ID')
     access_token = models.TextField(help_text='The OAuth2 access token')
-    auth_secret = models.TextField(help_text='The OAuth2 auth secret')
     refresh_token = models.TextField(help_text='The OAuth2 refresh token')
     expires_at = models.FloatField(
         help_text='The timestamp when the access token expires')

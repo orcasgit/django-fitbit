@@ -86,7 +86,6 @@ class FitappTestBase(TestCase):
             'user': kwargs.pop('user', self.create_user()),
             'fitbit_user': kwargs.pop('fitbit_user', self.random_string(25)),
             'access_token': self.random_string(25),
-            'auth_secret': self.random_string(25),
             'refresh_token': self.random_string(25),
             'expires_at': time.time() + 300,
         }
