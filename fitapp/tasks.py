@@ -34,7 +34,9 @@ def subscribe(fitbit_user, subscriber_id):
 def unsubscribe(*args, **kwargs):
     """ Unsubscribe from a user's fitbit data """
 
-    fb = utils.create_fitbit(**kwargs)
+    # Ignore updated token, it's not needed. The session gets the new token
+    # automatically
+    fb = utils.create_fitbit(refresh_cb=lambda token: None, **kwargs)
     try:
         for sub in fb.list_subscriptions()['apiSubscriptions']:
             if sub['ownerId'] == kwargs['user_id']:

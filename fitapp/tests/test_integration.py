@@ -1,6 +1,9 @@
+import json
+import requests_mock
 import time
 
 from collections import OrderedDict
+from datetime import datetime
 
 from django.conf import settings
 from django.contrib import messages
@@ -9,7 +12,9 @@ from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from django.test.utils import override_settings
 from fitbit.exceptions import HTTPConflict
+from freezegun import freeze_time
 from mock import patch
+from requests.auth import _basic_auth_str
 
 from fitapp import utils
 from fitapp.decorators import fitbit_integration_warning
@@ -394,6 +399,44 @@ class TestLogoutView(FitappTestBase):
         self.assertRedirectsNoFollow(
             response, utils.get_setting('FITAPP_LOGIN_REDIRECT'))
         self.assertEqual(UserFitbit.objects.count(), 0)
+
+    @freeze_time(datetime.fromtimestamp(1483500000))
+    @patch('fitbit.Fitbit.subscription')
+    def test_get_token_expired(self, subscription):
+        subs_url = 'https://api.fitbit.com/1/user/-/apiSubscriptions.json'
+        self.fbuser.expires_at = 1483400000
+        self.fbuser.save()
+        sub = {
+            'ownerId': self.fbuser.fitbit_user,
+            'subscriberId': '1',
+            'subscriptionId': str(self.user.id).encode('utf8'),
+            'collectionType': 'user',
+            'ownerType': 'user'
+        }
+        subs = {'apiSubscriptions': [sub]}
+        tok = {
+            'access_token': 'fake_return_access_token',
+            'refresh_token': 'fake_return_refresh_token',
+            'expires_at': 1483600000,
+        }
+        with requests_mock.mock() as m:
+            m.get(subs_url, text=json.dumps(subs), status_code=200)
+            m.post('https://api.fitbit.com/oauth2/token', text=json.dumps(tok))
+
+            response = self._get()
+
+        mock_requests = m.request_history
+        assert mock_requests[0].path == '/oauth2/token'
+        assert mock_requests[0].headers['Authorization'] == _basic_auth_str(
+            settings.FITAPP_CONSUMER_KEY,
+            settings.FITAPP_CONSUMER_SECRET
+        )
+        assert mock_requests[1].path == '/1/user/-/apisubscriptions.json'
+        assert mock_requests[1].headers['Authorization'] == 'Bearer {}'.format(
+            tok['access_token']
+        )
+        subscription.assert_called_once_with(
+            sub['subscriptionId'], sub['subscriberId'], method="DELETE")
 
     def test_unauthenticated(self):
         """User must be logged in to access Logout view."""
