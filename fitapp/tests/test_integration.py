@@ -409,7 +409,7 @@ class TestLogoutView(FitappTestBase):
         sub = {
             'ownerId': self.fbuser.fitbit_user,
             'subscriberId': '1',
-            'subscriptionId': str(self.user.id).encode('utf8'),
+            'subscriptionId': str(self.user.id),
             'collectionType': 'user',
             'ownerType': 'user'
         }
@@ -488,7 +488,9 @@ class TestSubscription(FitappTestBase):
             'ownerType': 'user'
         }
         list_subscriptions.return_value = {'apiSubscriptions': [sub]}
-        unsubscribe.apply_async(kwargs=self.fbuser.get_user_data())
+        kwargs = self.fbuser.get_user_data()
+        del kwargs['refresh_cb']
+        unsubscribe.apply_async(kwargs=kwargs)
         list_subscriptions.assert_called_once_with()
         subscription.assert_called_once_with(
             sub['subscriptionId'], sub['subscriberId'], method="DELETE")
@@ -497,7 +499,9 @@ class TestSubscription(FitappTestBase):
     @patch('fitbit.Fitbit.list_subscriptions')
     def test_unsubscribe_error(self, list_subscriptions, subscription):
         list_subscriptions.side_effect = HTTPConflict
-        result = unsubscribe.apply_async(kwargs=self.fbuser.get_user_data())
+        kwargs = self.fbuser.get_user_data()
+        del kwargs['refresh_cb']
+        result = unsubscribe.apply_async(kwargs=kwargs)
         self.assertEqual(result.status, 'REJECTED')
         list_subscriptions.assert_called_once_with()
         self.assertEqual(subscription.call_count, 0)
