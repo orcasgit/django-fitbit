@@ -16,6 +16,7 @@ Contents:
    views
    templatetags
    utils
+   commands
    links
    releases
 
@@ -48,4 +49,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

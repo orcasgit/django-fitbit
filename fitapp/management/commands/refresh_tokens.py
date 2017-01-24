@@ -1,3 +1,16 @@
+"""
+This django management command can be used to refresh user access tokens.
+Running without arguments will refresh only the tokens that are expired.
+
+Using the ``--all`` option will refresh all access tokens, whether expired or
+not.
+
+Using the ``--deauth`` option tells the command to remove the ``UserFitbit``
+object for any tokens that fail to refresh for whatever reason. This can be
+handy to prune ``UserFitbit`` objects that have somehow managed to get an
+invalid refresh token (an unrecoverable state).
+"""
+
 import time
 
 from django.core.management.base import BaseCommand, CommandError
@@ -5,6 +18,7 @@ from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 
 from fitapp.models import UserFitbit
 from fitapp.utils import create_fitbit
+
 
 class Command(BaseCommand):
     help = """
