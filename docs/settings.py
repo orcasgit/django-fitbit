@@ -23,4 +23,6 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.sites',
     'fitapp',
-    )
+)
+
+SECRET_KEY = 'DOCS_KEY'

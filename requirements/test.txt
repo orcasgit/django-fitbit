@@ -2,3 +2,4 @@ coverage>4
 mock>=1,<1.4
 freezegun>=0.2.3,<0.4
 requests-mock>=1.2.0
+Sphinx>=1.2
