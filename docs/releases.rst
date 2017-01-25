@@ -1,7 +1,4 @@
 Release history
 ==================
 
-0.0.1
---------
-
-Initial release.
+.. include:: ../CHANGELOG.rst
