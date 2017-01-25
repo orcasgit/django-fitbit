@@ -14,8 +14,9 @@ class UserFitbit(models.Model):
     fitbit_user = models.CharField(
         max_length=32, unique=True, help_text='The fitbit user ID')
     access_token = models.TextField(help_text='The OAuth2 access token')
-    auth_secret = models.TextField(help_text='The OAuth2 auth secret')
     refresh_token = models.TextField(help_text='The OAuth2 refresh token')
+    expires_at = models.FloatField(
+        help_text='The timestamp when the access token expires')
 
     def __str__(self):
         return self.user.__str__()
@@ -24,6 +25,7 @@ class UserFitbit(models.Model):
         """ Called when the OAuth token has been refreshed """
         self.access_token = token['access_token']
         self.refresh_token = token['refresh_token']
+        self.expires_at = token['expires_at']
         self.save()
 
     def get_user_data(self):
@@ -31,6 +33,7 @@ class UserFitbit(models.Model):
             'user_id': self.fitbit_user,
             'access_token': self.access_token,
             'refresh_token': self.refresh_token,
+            'expires_at': self.expires_at,
             'refresh_cb': self.refresh_cb,
         }
 

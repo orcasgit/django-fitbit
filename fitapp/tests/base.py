@@ -1,6 +1,7 @@
-from mock import patch, Mock
+from mock import MagicMock, Mock, patch
 import django
 import random
+import time
 try:
     from urllib.parse import urlencode
     from string import ascii_letters
@@ -25,7 +26,9 @@ class MockClient(object):
         self.client_secret = kwargs.get('client_secret', 'S12345Secret')
         self.access_token = kwargs.get('access_token', None)
         self.refresh_token = kwargs.get('refresh_token', None)
+        self.expires_at = kwargs.get('expires_at', None)
         self.error = kwargs.get('error', None)
+        self.session = MagicMock()
 
     def authorize_token_url(self, *args, **kwargs):
         return ('/complete/', '12345')
@@ -38,6 +41,7 @@ class MockClient(object):
             'user_id': self.user_id,
             'refresh_token': self.refresh_token,
             'token_type': 'Bearer',
+            'expires_at': self.expires_at,
             'scope': ['weight', 'sleep', 'heartrate', 'activity']
         }
         if self.access_token:
@@ -82,8 +86,8 @@ class FitappTestBase(TestCase):
             'user': kwargs.pop('user', self.create_user()),
             'fitbit_user': kwargs.pop('fitbit_user', self.random_string(25)),
             'access_token': self.random_string(25),
-            'auth_secret': self.random_string(25),
-            'refresh_token': self.random_string(25)
+            'refresh_token': self.random_string(25),
+            'expires_at': time.time() + 300,
         }
         defaults.update(kwargs)
         return UserFitbit.objects.create(**defaults)
