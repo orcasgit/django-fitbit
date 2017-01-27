@@ -147,15 +147,17 @@ def complete(request):
 def create_fitbit_session(sender, request, user, **kwargs):
     """ If the user is a fitbit user, update the profile in the session. """
 
-    if user.is_authenticated() and utils.is_integrated(user) and \
-            user.is_active:
-        fbuser = UserFitbit.objects.filter(user=user)
-        if fbuser.exists():
-            fb = utils.create_fitbit(**fbuser[0].get_user_data())
-            try:
-                request.session['fitbit_profile'] = fb.user_profile_get()
-            except:
-                pass
+    if user.is_authenticated() and utils.is_integrated(user) and user.is_active:
+        try:
+            fbuser = UserFitbit.objects.get(user=user)
+            fb = utils.create_fitbit(**fbuser.get_user_data())
+            request.session['fitbit_profile'] = fb.user_profile_get()
+            if fb.client.token['access_token'] != fbuser.access_token:
+                fbuser.access_token = fb.client.token['access_token']
+                fbuser.refresh_token = fb.client.token['refresh_token']
+                fbuser.save()
+        except:
+            pass
 
 
 @login_required
