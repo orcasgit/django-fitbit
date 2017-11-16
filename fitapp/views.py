@@ -271,7 +271,7 @@ def update(request):
                     # the server
                     get_time_series_data.apply_async(
                         (update['ownerId'], _type.category, _type.resource,),
-                        {'date': parser.parse(update['date'])},
+                        {'date': update['date']},
                         countdown=(btw_delay * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
