@@ -1,25 +1,24 @@
 from __future__ import absolute_import
 
-import celery
 import json
 import sys
 import time
-
 from collections import OrderedDict
+
+import celery
 from dateutil import parser
 from django.core.cache import cache
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.urls import reverse
 from django.test.utils import override_settings
+from django.urls import reverse
+from fitbit import exceptions as fitbit_exceptions
+from fitbit.api import Fitbit
 from freezegun import freeze_time
 from mock import MagicMock, patch
 from requests_oauthlib import OAuth2Session
 
-from fitbit import exceptions as fitbit_exceptions
-from fitbit.api import Fitbit, FitbitOauth2Client
-
 from fitapp import utils
-from fitapp.models import UserFitbit, TimeSeriesData, TimeSeriesDataType
+from fitapp.models import TimeSeriesData, TimeSeriesDataType, UserFitbit
 from fitapp.tasks import get_time_series_data
 
 try:
@@ -175,7 +174,7 @@ class TestRetrievalTask(FitappTestBase):
             self.assertEqual(
                 cache.get('fitapp.get_time_series_data-lock-%s-%s-%s' % (
                     category, resource.resource, self.date)
-                ), None)
+                          ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
             assert tsd.value == self.value
@@ -194,7 +193,7 @@ class TestRetrievalTask(FitappTestBase):
             self.assertEqual(
                 cache.get('fitapp.get_time_series_data-lock-%s-%s-%s' % (
                     category, resource.resource, self.date)
-                ), None)
+                          ), None)
         date = parser.parse(self.date)
         for tsd in TimeSeriesData.objects.filter(user=self.user, date=date):
             assert tsd.value == self.value
@@ -289,6 +288,7 @@ class TestRetrievalTask(FitappTestBase):
             self.fbuser.fitbit_user, _type, self.date)
         exc = fitbit_exceptions.HTTPTooManyRequests(self._error_response())
         exc.retry_after_secs = 21
+
         def side_effect(*args, **kwargs):
             # Delete the cache lock after the first try and adjust the
             # get_fitbit_data mock to be successful
@@ -299,6 +299,7 @@ class TestRetrievalTask(FitappTestBase):
                 'value': '34'
             }]
             raise exc
+
         get_fitbit_data.side_effect = side_effect
         category = getattr(TimeSeriesDataType, self.category)
         resources = TimeSeriesDataType.objects.filter(category=category)

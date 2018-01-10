@@ -1,26 +1,23 @@
-from functools import cmp_to_key
 import simplejson as json
-
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
-from django.urls import reverse
 from django.dispatch import receiver
-from django.http import HttpResponse, HttpResponseServerError, Http404
+from django.http import Http404, HttpResponse, HttpResponseServerError
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
+from fitbit.exceptions import (
+    HTTPConflict, HTTPForbidden, HTTPServerError, HTTPUnauthorized
+)
 from six import string_types
 
-from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
-                               HTTPServerError)
-
-from . import forms
-from . import utils
-from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
+from . import forms, utils
+from .models import TimeSeriesData, TimeSeriesDataType, UserFitbit
 from .tasks import get_time_series_data, subscribe, unsubscribe
 
 
@@ -127,7 +124,7 @@ def complete(request):
             tsdts = tsdts.filter(resource__in=res)
             # Sort as specified in FITAPP_SUBSCRIPTIONS
             tsdts = sorted(tsdts, key=lambda tsdt: (
-                cats.index(tsdt.category) + res.index(tsdt.resource)
+                    cats.index(tsdt.category) + res.index(tsdt.resource)
             ))
 
         # Create tasks for all data in all data types

@@ -1,6 +1,6 @@
-from fitapp.models import TimeSeriesDataType
 from django.db import IntegrityError
 
+from fitapp.models import TimeSeriesDataType
 from .base import FitappTestBase
 
 

@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import models, migrations
 from django.conf import settings
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
@@ -15,7 +14,9 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='TimeSeriesData',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('id',
+                 models.AutoField(verbose_name='ID', serialize=False, auto_created=True,
+                                  primary_key=True)),
                 ('date', models.DateField()),
                 ('value', models.CharField(default=None, max_length=32, null=True)),
             ],
@@ -26,8 +27,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='TimeSeriesDataType',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('category', models.IntegerField(choices=[(0, b'foods'), (1, b'activities'), (2, b'sleep'), (3, b'body')])),
+                ('id',
+                 models.AutoField(verbose_name='ID', serialize=False, auto_created=True,
+                                  primary_key=True)),
+                ('category', models.IntegerField(
+                    choices=[(0, b'foods'), (1, b'activities'), (2, b'sleep'),
+                             (3, b'body')])),
                 ('resource', models.CharField(max_length=128)),
             ],
             options={
@@ -38,7 +43,9 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='UserFitbit',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('id',
+                 models.AutoField(verbose_name='ID', serialize=False, auto_created=True,
+                                  primary_key=True)),
                 ('fitbit_user', models.CharField(unique=True, max_length=32)),
                 ('auth_token', models.TextField()),
                 ('auth_secret', models.TextField()),

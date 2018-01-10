@@ -1,7 +1,9 @@
-from mock import MagicMock, Mock, patch
-import django
 import random
 import time
+
+import django
+from mock import MagicMock, Mock, patch
+
 try:
     from urllib.parse import urlencode
     from string import ascii_letters

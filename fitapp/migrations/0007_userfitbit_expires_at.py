@@ -8,7 +8,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('fitapp', '0006_help_text'),
     ]
@@ -17,7 +16,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='userfitbit',
             name='expires_at',
-            field=models.FloatField(default=time.time(), help_text=b'The timestamp when the access token expires'),
+            field=models.FloatField(default=time.time(),
+                                    help_text=b'The timestamp when the access token expires'),
             preserve_default=False,
         ),
     ]

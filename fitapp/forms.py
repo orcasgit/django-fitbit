@@ -2,7 +2,6 @@ from django import forms
 
 from . import utils
 
-
 INPUT_FORMATS = ['%Y-%m-%d']
 
 

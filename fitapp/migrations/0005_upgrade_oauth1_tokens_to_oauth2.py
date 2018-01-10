@@ -1,8 +1,8 @@
-from django.db import migrations, models
-
+from django.db import migrations
 from fitbit.api import FitbitOauth2Client
-from fitapp.utils import get_setting
 from oauthlib.oauth2.rfc6749.errors import MissingTokenError
+
+from fitapp.utils import get_setting
 
 
 def forwards(apps, schema_editor):
@@ -29,7 +29,6 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('fitapp', '0004_rename_auth_token_to_access_token'),
     ]

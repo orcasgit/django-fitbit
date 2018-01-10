@@ -1,10 +1,9 @@
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-
 from fitbit import Fitbit
 
 from . import defaults
-from .models import UserFitbit, TimeSeriesDataType
+from .models import TimeSeriesDataType, UserFitbit
 
 
 def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):

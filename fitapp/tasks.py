@@ -9,11 +9,10 @@ from django.db import transaction
 from fitbit.exceptions import HTTPBadRequest, HTTPTooManyRequests
 
 from . import utils
-from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
-
+from .models import TimeSeriesData, TimeSeriesDataType, UserFitbit
 
 logger = logging.getLogger(__name__)
-LOCK_EXPIRE = 60 * 5 # Lock expires in 5 minutes
+LOCK_EXPIRE = 60 * 5  # Lock expires in 5 minutes
 
 
 @shared_task
