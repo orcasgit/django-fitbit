@@ -2,5 +2,5 @@
 -r test.txt
 
 django-debug-toolbar
-django>=1.8,<1.11
+Django==2.0.1
 tox>=1.8,<2.4

@@ -9,7 +9,7 @@ from collections import OrderedDict
 from dateutil import parser
 from django.core.cache import cache
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.test.utils import override_settings
 from freezegun import freeze_time
 from mock import MagicMock, patch
