@@ -15,7 +15,7 @@ setup(
     description="Django integration for python-fitbit",
     long_description=open("README.md").read(),
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Alpha",
         'License :: OSI Approved :: Apache Software License',
         "Environment :: Web Environment",
         "Framework :: Django",
@@ -28,6 +28,7 @@ setup(
         "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: Implementation",
         "Programming Language :: Python :: Implementation :: PyPy"
     ],
