@@ -2,5 +2,8 @@
 -r test.txt
 
 django-debug-toolbar
-Django==2.0.1
-tox>=1.8,<2.4
+Django>=2.0.1,<2.1
+tox>=2.9,<3
+
+pip-review
+pipdeptree
