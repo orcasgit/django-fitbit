@@ -1,9 +1,0 @@
--r base.txt
--r test.txt
-
-django-debug-toolbar
-Django>=2.0.1,<2.1
-tox>=2.9,<3
-
-pip-review
-pipdeptree
