@@ -72,6 +72,7 @@ class TimeSeriesDataType(models.Model):
             'be used for the [resource-path] of the API url referred to in '
             'the Fitbit documentation'
         ))
+    intraday_support = models.BooleanField(default=False)
 
     def __str__(self):
         return self.path()
@@ -104,7 +105,7 @@ class TimeSeriesData(models.Model):
         help_text='The type of time series data',
         on_delete=models.CASCADE
     )
-    date = models.DateField(help_text='The date the data was recorded')
+    date = models.DateTimeField(help_text='The date the data was recorded, and time if intraday.')
     value = models.CharField(
         null=True,
         default=None,
@@ -115,9 +116,10 @@ class TimeSeriesData(models.Model):
             'For example, for step data the value might be "9783" (the units) '
             'would be "steps"'
         ))
+    intraday = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('user', 'resource_type', 'date')
+        unique_together = ('user', 'resource_type', 'date', 'intraday')
 
     def string_date(self):
         return self.date.strftime('%Y-%m-%d')
