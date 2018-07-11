@@ -18,7 +18,7 @@ from six import string_types
 
 from . import forms, utils
 from .models import TimeSeriesData, TimeSeriesDataType, UserFitbit
-from .tasks import get_time_series_data, subscribe, unsubscribe
+from .tasks import get_time_series_data, subscribe, unsubscribe, get_intraday_data
 
 
 @login_required

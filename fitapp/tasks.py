@@ -106,3 +106,8 @@ def get_time_series_data(self, fitbit_user, cat, resource, date=None):
     except Exception as e:
         logger.exception("Exception updating data: %s" % e)
         raise Reject(e, requeue=False)
+
+
+@shared_task
+def get_intraday_data():
+    pass

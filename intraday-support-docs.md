@@ -21,3 +21,17 @@ What was changed
     - Change date field for TimeSeriesData from DateField to DateTimeField, change help text to reflect this.
         - NOTE: I would like to change the name of this field to date_time.
     - Change unique_together values for TimeSeriesData by adding 'intraday' as a requirement.
+
+Changes to fitapp/migrations
+
+- Changes to fitapp/views.py
+    - Change
+
+- Changes to fitapp/tasks.py
+    - Add currently empty get_intraday_data task.
+
+
+Planned changes
+Have fitbit listener view call a different task depending on if data is intraday or not.
+Probably need to add fitapp subscriptions value for test settings?
+issues with migrations
