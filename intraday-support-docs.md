@@ -23,6 +23,8 @@ What was changed
     - Change unique_together values for TimeSeriesData by adding 'intraday' as a requirement.
 
 Changes to fitapp/migrations
+    - Move addition of TimeSeriesDataType.intraday_support to 0001_initial.py to resolve errors.
+    - Add intraday_support field to every TimeSeriesDataType in fitapp/fixtures/initial_data.json to resolve errors.
 
 - Changes to fitapp/views.py
     - Change
@@ -34,4 +36,3 @@ Changes to fitapp/migrations
 Planned changes
 Have fitbit listener view call a different task depending on if data is intraday or not.
 Probably need to add fitapp subscriptions value for test settings?
-issues with migrations
