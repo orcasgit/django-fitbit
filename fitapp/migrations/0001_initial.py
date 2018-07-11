@@ -34,6 +34,7 @@ class Migration(migrations.Migration):
                     choices=[(0, b'foods'), (1, b'activities'), (2, b'sleep'),
                              (3, b'body')])),
                 ('resource', models.CharField(max_length=128)),
+                ('intraday_support', models.BooleanField(default=False)),
             ],
             options={
                 'ordering': ['category', 'resource'],
