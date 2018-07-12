@@ -42,6 +42,7 @@ What was changed
 - Changes to fitapp/models.py
     - Add intraday_support field to TimeSeriesDataType, defaults to False.
     - Add intraday field to TimeSeriesData, defaults to False.
+    - Add last_intraday_step_data_datetime field to UserFitbit, defaults to None.
     - Change date field for TimeSeriesData from DateField to DateTimeField, change help text to reflect this.
         - NOTE: I would like to change the name of this field to date_time.
     - Change unique_together values for TimeSeriesData by adding 'intraday' as a requirement.

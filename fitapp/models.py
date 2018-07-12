@@ -20,6 +20,14 @@ class UserFitbit(models.Model):
     expires_at = models.FloatField(
         help_text='The timestamp when the access token expires')
 
+    # Essentially a MapTrek-specific field.
+    # If the app collects intraday step data, this field stores the datetime of the last
+    # piece of data taken from Fitbit, zero or nonzero.
+    last_intraday_step_data_datetime = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=None)
+
     def __str__(self):
         return self.user.__str__()
 

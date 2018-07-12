@@ -8,3 +8,5 @@ docs/_build/
 htmlcov/
 *~
 .idea
+
+django_fitapp
