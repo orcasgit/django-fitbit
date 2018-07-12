@@ -264,6 +264,11 @@ def update(request):
                         key=lambda tsdt: res_list.index(tsdt.resource)
                     )
                 for i, _type in enumerate(tsdts):
+                    if utils.get_setting('FITAPP_GET_INTRADAY') and _type.intraday_support:
+                        get_intraday_data.apply.async(
+                            (update['ownerId'], _type.category, _type.resource,),
+                            {'date': parser.parse(update['date'])},
+                            countdown=(btw_delay * i))
                     # Offset each call by a few seconds so they don't bog down
                     # the server
                     get_time_series_data.apply_async(
