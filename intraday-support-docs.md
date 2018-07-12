@@ -1,4 +1,5 @@
 Summary for 7/12/18
+
 I'm still trying to get a handle on what changed between the original django-fitbit and our fork.
 Particularly the FITAPP_SUBSCRIPTIONS setting in the original django-fitbit - there are no usages of this in the
 old MapTrek, and it defaults to None, which would seem to make some of the code not work, but it does.
@@ -59,8 +60,16 @@ Changes to fitapp/migrations
 
 
 Planned changes
+
+- Add last_intraday_data_from_when or similar field to UserFitbit
+- Rewrite get_intraday_data to use appropriate python-fitbit function and to update/maintain last_intraday_data field.
+        - Also to ask for a time range instead of a full day of data. 
+
 Have fitbit listener view call a different task depending on if data is intraday or not.
 Probably need to add fitapp subscriptions value for test settings?
+
+
+
 
 Unknown number of new settings introduced in fork of django-fitbit
 I have yet to figure out how FITAPP_SUBSCRIPTIONS is set in Maptrek.
