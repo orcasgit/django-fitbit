@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 fitbit = ">=0.3.0"
-celery = "<4.2,>=4.1"
+celery = "*"
 simplejson = "<4,>=3.13"
 mock = "<3,>=2"
 freezegun = "<0.4,>=0.3.9"

@@ -57,7 +57,7 @@ Changes to fitapp/migrations
     when the data needed is intraday enabled, instead of calling get_time_series_data.
 
 - Changes to fitapp/tasks.py
-    - Adapt preexisting get_intradat_data task to work with current django-fitbit.
+    - Adapt preexisting get_intraday_data task to work with current django-fitbit.
 
 - Changes to fitapp/utils.py
     - Modify get_fitbit_data to use python-fitbit's intraday_time_series function to retrieve data when

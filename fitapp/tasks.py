@@ -67,7 +67,7 @@ def get_time_series_data(self, fitbit_user, cat, resource, date=None):
 
     try:
         with transaction.atomic():
-            # Block until we have exclusive update access to this UserFitbit, so
+            # Block until we have exclusive up date access to this UserFitbit, so
             # that another process cannot step on us when we update tokens
             fbusers = UserFitbit.objects.select_for_update().filter(
                 fitbit_user=fitbit_user)

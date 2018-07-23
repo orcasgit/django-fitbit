@@ -269,13 +269,12 @@ def update(request):
                             (update['ownerId'], _type.category, _type.resource,),
                             {'date': parser.parse(update['date'])},
                             countdown=(btw_delay * i))
-                    else:
-                        # Offset each call by a few seconds so they don't bog down
-                        # the server
-                        get_time_series_data.apply_async(
-                            (update['ownerId'], _type.category, _type.resource,),
-                            {'date': parser.parse(update['date'])},
-                            countdown=(btw_delay * i))
+                    # Offset each call by a few seconds so they don't bog down
+                    # the server
+                    get_time_series_data.apply_async(
+                        (update['ownerId'], _type.category, _type.resource,),
+                        {'date': parser.parse(update['date'])},
+                        countdown=(btw_delay * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
         except ImproperlyConfigured as e:
