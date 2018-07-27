@@ -33,6 +33,7 @@ as intraday-compatible.
     - VERY IMPORTANT: There are not currently checks to see if the given Fitbit app has authorization for
     a certain category of intraday data. Be sure your app has authorization before attempting to retrieve it.
 - Intraday TimeSeriesData instances will be marked with intraday = True.
+- There must be a FITAPP_USER_MODEL setting set to whatever model you want UserFitbits and TimeSeriesData associated with.
 
 
 What was changed
@@ -64,6 +65,9 @@ Changes to fitapp/migrations
     a resource category is intraday enabled.
    - Add an optional start_time and end_time to get_fitbit_data to use for retrieving intraday data.
 
+- Changes to enable swappable model to which UserFitbits and data is associated
+    - Create new setting, FITAPP_USER_MODEL, which must be set to the model to associate UserFitbits and TimeSeriesData to.
+    - Set this setting to a default in test_settings.py
 
 Planned changes
 

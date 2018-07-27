@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 
-UserModel = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
+UserModel = getattr(settings, 'FITAPP_USER_MODEL', 'auth.User')
 
 
 @python_2_unicode_compatible
