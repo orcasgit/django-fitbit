@@ -50,7 +50,6 @@ def login(request):
     return redirect(token_url)
 
 
-@login_required
 def complete(request):
     """
     After the user authorizes us, Fitbit sends a callback to this URL to
