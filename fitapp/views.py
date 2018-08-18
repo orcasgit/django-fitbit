@@ -67,9 +67,15 @@ def complete(request):
     If :ref:`FITAPP_SUBSCRIBE` is set to True, add a subscription to user
     data at this time.
 
+    Requires the pk of the user or model that will be associated with fitapp
+    data to be inserted into request.session['fb_user_id'] prior to calling
+    the view.
+
     URL name:
         `fitbit-complete`
     """
+    user_model = UserFitbit.user.field.rel.to
+
     try:
         code = request.GET['code']
     except KeyError:
@@ -80,14 +86,16 @@ def complete(request):
     try:
         token = fb.client.fetch_access_token(code, callback_uri)
         access_token = token['access_token']
+        fb_user_id = int(request.session.get('fb_user_id'))
+        user = user_model.objects.get(pk=fb_user_id)
         fitbit_user = token['user_id']
     except KeyError:
         return redirect(reverse('fitbit-error'))
 
     if UserFitbit.objects.filter(fitbit_user=fitbit_user).exists():
+        current_fbuser = UserFitbit.objects.filter(fitbit_user=fitbit_user).first()
         return redirect(reverse('fitbit-error'))
 
-    user = request.user
     fbuser, _ = UserFitbit.objects.update_or_create(user=user, defaults={
         'fitbit_user': fitbit_user,
         'access_token': access_token,
@@ -124,7 +132,7 @@ def complete(request):
             tsdts = tsdts.filter(resource__in=res)
             # Sort as specified in FITAPP_SUBSCRIPTIONS
             tsdts = sorted(tsdts, key=lambda tsdt: (
-                    cats.index(tsdt.category) + res.index(tsdt.resource)
+                cats.index(tsdt.category) + res.index(tsdt.resource)
             ))
 
         # Create tasks for all data in all data types
