@@ -1,8 +1,6 @@
 import simplejson as json
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
@@ -76,7 +74,7 @@ def complete(request):
     URL name:
         `fitbit-complete`
     """
-    user_model = getattr(settings, 'FITAPP_USER_MODEL', 'auth.User')
+    user_model = UserFitbit.user.field.remote_field.model
 
     try:
         code = request.GET['code']
