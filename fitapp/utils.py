@@ -65,15 +65,14 @@ def get_fitbit_data(fbuser, resource_type, base_date=None, period=None,
     resource_path = resource_type.path()
 
     if get_setting('FITAPP_GET_INTRADAY') and resource_type.intraday_support:
-        # what is the base date?
+        base_date = base_date[:10]
         data = fb.intraday_time_series(resource_path, base_date=base_date,
                                        start_time=start_time, end_time=end_time)
     else:
         data = fb.time_series(resource_path, user_id=fbuser.fitbit_user,
                               period=period, base_date=base_date,
                               end_date=end_date)
-
-    return data[resource_path.replace('/', '-')]
+    return data
 
 
 def get_setting(name, use_defaults=True):

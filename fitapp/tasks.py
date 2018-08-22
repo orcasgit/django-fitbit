@@ -1,11 +1,15 @@
 import logging
 import random
+import sys
+import datetime
+import time
 
 from celery import shared_task
 from celery.exceptions import Ignore, Reject
 from dateutil import parser
 from django.core.cache import cache
 from django.db import transaction
+from django.utils.timezone import utc
 from fitbit.exceptions import HTTPBadRequest, HTTPTooManyRequests
 
 from . import utils
@@ -57,13 +61,13 @@ def get_time_series_data(self, fitbit_user, cat, resource, date=None):
             resource, cat))
         raise Reject(e, requeue=False)
 
-    # Create a lock so we don't try to run the same task multiple times
-    sdat = date.strftime('%Y-%m-%d') if date else 'ALL'
-    lock_id = '{0}-lock-{1}-{2}-{3}'.format(__name__, fitbit_user, _type, sdat)
-    if not cache.add(lock_id, 'true', LOCK_EXPIRE):
-        logger.debug('Already retrieving %s data for date %s, user %s' % (
-            _type, fitbit_user, sdat))
-        raise Ignore()
+    # # Create a lock so we don't try to run the same task multiple times
+    # sdat = date.strftime('%Y-%m-%d') if date else 'ALL'
+    # lock_id = '{0}-lock-{1}-{2}-{3}'.format(__name__, fitbit_user, _type, sdat)
+    # if not cache.add(lock_id, 'true', LOCK_EXPIRE):
+    #     logger.debug('Already retrieving %s data for date %s, user %s' % (
+    #         _type, fitbit_user, sdat))
+    #     raise Ignore()
 
     try:
         with transaction.atomic():
@@ -108,7 +112,8 @@ def get_time_series_data(self, fitbit_user, cat, resource, date=None):
         raise Reject(e, requeue=False)
 
 
-def get_intraday_data(fitbit_user, cat, resource, date, tz_offset, start_time=None, end_time=None):
+@shared_task(bind=True)
+def get_intraday_data(self, fitbit_user, cat, resource, date, tz_offset, start_time=None, end_time=None):
     """
     Get the user's intraday data for a specified date, convert to UTC prior to
     saving.
@@ -128,14 +133,15 @@ def get_intraday_data(fitbit_user, cat, resource, date, tz_offset, start_time=No
         raise Reject(sys.exc_info()[1], requeue=False)
 
     # Create a lock so we don't try to run the same task multiple times
-    sdat = date.strftime('%Y-%m-%d')
+    # sdat = date.strftime('%Y-%m-%d')
 
     fbusers = UserFitbit.objects.filter(fitbit_user=fitbit_user)
     dates = {'base_date': date, 'period': '1d'}
     try:
         with transaction.atomic():
             for fbuser in fbusers:
-                data = utils.get_fitbit_data(fbuser, _type, return_all=True, start_time=start_time, end_time=end_time,
+                data = utils.get_fitbit_data(fbuser, _type, start_time=start_time,
+                                             end_time=end_time,
                                              **dates)
                 resource_path = _type.path().replace('/', '-')
                 key = resource_path + "-intraday"
@@ -146,8 +152,8 @@ def get_intraday_data(fitbit_user, cat, resource, date, tz_offset, start_time=No
                 intraday = data[key]['dataset']
                 logger.info("Date for intraday task: {}".format(date))
                 for minute in intraday:
-                    datetime = parser.parse(minute['time'], default=date)
-                    utc_datetime = datetime + timedelta(hours=tz_offset)
+                    date_time = parser.parse(date[:10] + ' ' + minute['time'])
+                    utc_datetime = date_time + datetime.timedelta(hours=tz_offset)
                     utc_datetime = utc_datetime.replace(tzinfo=utc)
                     value = minute['value']
                     # Don't create unnecessary records

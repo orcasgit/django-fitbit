@@ -272,16 +272,17 @@ def update(request):
                     )
                 for i, _type in enumerate(tsdts):
                     if utils.get_setting('FITAPP_GET_INTRADAY') and _type.intraday_support:
-                        get_intraday_data.apply.async(
-                            (update['ownerId'], _type.category, _type.resource,),
-                            {'date': parser.parse(update['date'])},
+                        date = parser.parse(update['date'])
+                        get_intraday_data.apply_async(
+                            (update['ownerId'], _type.category, _type.resource, date, 0),
                             countdown=(btw_delay * i))
                     # Offset each call by a few seconds so they don't bog down
                     # the server
-                    get_time_series_data.apply_async(
-                        (update['ownerId'], _type.category, _type.resource,),
-                        {'date': parser.parse(update['date'])},
-                        countdown=(btw_delay * i))
+                    else:
+                        get_time_series_data.apply_async(
+                            (update['ownerId'], _type.category, _type.resource,),
+                            {'date': parser.parse(update['date'])},
+                            countdown=(btw_delay * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
         except ImproperlyConfigured as e:
