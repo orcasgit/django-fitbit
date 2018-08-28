@@ -42,7 +42,7 @@ class Migration(migrations.Migration):
                 ('fitbit_user', models.CharField(unique=True, max_length=32)),
                 ('auth_token', models.TextField()),
                 ('auth_secret', models.TextField()),
-                ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL)),
+                ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
             options={
             },
@@ -55,13 +55,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='timeseriesdata',
             name='resource_type',
-            field=models.ForeignKey(to='fitapp.TimeSeriesDataType'),
+            field=models.ForeignKey(to='fitapp.TimeSeriesDataType', on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='timeseriesdata',
             name='user',
-            field=models.ForeignKey(to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AlterUniqueTogether(
