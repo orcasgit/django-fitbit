@@ -1,7 +1,6 @@
 import simplejson as json
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
 from django.dispatch import receiver
@@ -21,7 +20,6 @@ from .models import TimeSeriesData, TimeSeriesDataType, UserFitbit
 from .tasks import get_time_series_data, subscribe, unsubscribe, get_intraday_data
 
 
-@login_required
 def login(request):
     """
     Begins the OAuth authentication process by obtaining a Request Token from
@@ -162,7 +160,6 @@ def create_fitbit_session(sender, request, user, **kwargs):
                 pass
 
 
-@login_required
 def error(request):
     """
     The user is redirected to this view if we encounter an error acquiring
@@ -188,7 +185,6 @@ def error(request):
     return render(request, utils.get_setting('FITAPP_ERROR_TEMPLATE'), {})
 
 
-@login_required
 def logout(request):
     """Forget this user's Fitbit credentials.
 
