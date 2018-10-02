@@ -6,8 +6,10 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    UserModel = getattr(settings, 'FITAPP_USER_MODEL', 'auth.User')
     dependencies = [
         ('fitapp', '0008_remove_userfitbit_auth_secret'),
+        migrations.swappable_dependency(UserModel),
     ]
 
     operations = [
@@ -28,7 +30,7 @@ class Migration(migrations.Migration):
             name='user',
             field=models.ForeignKey(help_text="The data's user",
                                     on_delete=django.db.models.deletion.CASCADE,
-                                    to=settings.AUTH_USER_MODEL),
+                                    to=UserModel),
         ),
         migrations.AlterField(
             model_name='timeseriesdata',
@@ -78,6 +80,6 @@ class Migration(migrations.Migration):
             name='user',
             field=models.OneToOneField(help_text='The user',
                                        on_delete=django.db.models.deletion.CASCADE,
-                                       to=settings.AUTH_USER_MODEL),
+                                       to=UserModel),
         ),
     ]

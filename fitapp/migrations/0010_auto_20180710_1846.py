@@ -5,9 +5,9 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
+    UserModel = getattr(settings, 'FITAPP_USER_MODEL', 'auth.User')
     dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        migrations.swappable_dependency(UserModel),
         ('fitapp', '0009_auto_20180110_1605'),
     ]
 
