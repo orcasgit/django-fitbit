@@ -1,30 +1,25 @@
-from functools import cmp_to_key
 import simplejson as json
-
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
-from django.core.urlresolvers import reverse
 from django.dispatch import receiver
-from django.http import HttpResponse, HttpResponseServerError, Http404
+from django.http import Http404, HttpResponse, HttpResponseServerError
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
+from fitbit.exceptions import (
+    HTTPConflict, HTTPForbidden, HTTPServerError, HTTPUnauthorized
+)
 from six import string_types
 
-from fitbit.exceptions import (HTTPUnauthorized, HTTPForbidden, HTTPConflict,
-                               HTTPServerError)
-
-from . import forms
-from . import utils
-from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
-from .tasks import get_time_series_data, subscribe, unsubscribe
+from . import forms, utils
+from .models import TimeSeriesData, TimeSeriesDataType, UserFitbit
+from .tasks import get_time_series_data, subscribe, unsubscribe, get_intraday_data
 
 
-@login_required
 def login(request):
     """
     Begins the OAuth authentication process by obtaining a Request Token from
@@ -53,7 +48,6 @@ def login(request):
     return redirect(token_url)
 
 
-@login_required
 def complete(request):
     """
     After the user authorizes us, Fitbit sends a callback to this URL to
@@ -70,9 +64,15 @@ def complete(request):
     If :ref:`FITAPP_SUBSCRIBE` is set to True, add a subscription to user
     data at this time.
 
+    Requires the pk of the user or model that will be associated with fitapp
+    data to be inserted into request.session['fb_user_id'] prior to calling
+    the view.
+
     URL name:
         `fitbit-complete`
     """
+    user_model = UserFitbit.user.field.remote_field.model
+
     try:
         code = request.GET['code']
     except KeyError:
@@ -83,14 +83,12 @@ def complete(request):
     try:
         token = fb.client.fetch_access_token(code, callback_uri)
         access_token = token['access_token']
+        fb_user_id = int(request.session.get('fb_user_id'))
+        user = user_model.objects.get(pk=fb_user_id)
         fitbit_user = token['user_id']
     except KeyError:
         return redirect(reverse('fitbit-error'))
 
-    if UserFitbit.objects.filter(fitbit_user=fitbit_user).exists():
-        return redirect(reverse('fitbit-error'))
-
-    user = request.user
     fbuser, _ = UserFitbit.objects.update_or_create(user=user, defaults={
         'fitbit_user': fitbit_user,
         'access_token': access_token,
@@ -147,7 +145,7 @@ def complete(request):
 def create_fitbit_session(sender, request, user, **kwargs):
     """ If the user is a fitbit user, update the profile in the session. """
 
-    if user.is_authenticated() and utils.is_integrated(user) and \
+    if user.is_authenticated and utils.is_integrated(user) and \
             user.is_active:
         fbuser = UserFitbit.objects.filter(user=user)
         if fbuser.exists():
@@ -158,7 +156,6 @@ def create_fitbit_session(sender, request, user, **kwargs):
                 pass
 
 
-@login_required
 def error(request):
     """
     The user is redirected to this view if we encounter an error acquiring
@@ -184,7 +181,6 @@ def error(request):
     return render(request, utils.get_setting('FITAPP_ERROR_TEMPLATE'), {})
 
 
-@login_required
 def logout(request):
     """Forget this user's Fitbit credentials.
 
@@ -267,12 +263,18 @@ def update(request):
                         key=lambda tsdt: res_list.index(tsdt.resource)
                     )
                 for i, _type in enumerate(tsdts):
+                    if utils.get_setting('FITAPP_GET_INTRADAY') and _type.intraday_support:
+                        date = parser.parse(update['date'])
+                        get_intraday_data.apply_async(
+                            (update['ownerId'], _type.category, _type.resource, date, 0),
+                            countdown=(btw_delay * i))
                     # Offset each call by a few seconds so they don't bog down
                     # the server
-                    get_time_series_data.apply_async(
-                        (update['ownerId'], _type.category, _type.resource,),
-                        {'date': parser.parse(update['date'])},
-                        countdown=(btw_delay * i))
+                    else:
+                        get_time_series_data.apply_async(
+                            (update['ownerId'], _type.category, _type.resource,),
+                            {'date': parser.parse(update['date'])},
+                            countdown=(btw_delay * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
         except ImproperlyConfigured as e:
@@ -421,7 +423,7 @@ def get_data(request, category, resource):
         return make_response(104)
 
     fitapp_subscribe = utils.get_setting('FITAPP_SUBSCRIBE')
-    if not user.is_authenticated() or not user.is_active:
+    if not user.is_authenticated or not user.is_active:
         return make_response(101)
     if not fitapp_subscribe and not utils.is_integrated(user):
         return make_response(102)

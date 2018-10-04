@@ -3,9 +3,9 @@ Tests in this file are for testing verification of fitbit subscriber endpoints.
 https://dev.fitbit.com/docs/subscriptions/#verify-a-subscriber
 """
 
-from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.test.utils import override_settings
+from django.urls import reverse
 
 
 class TestVerification(TestCase):

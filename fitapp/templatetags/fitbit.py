@@ -2,8 +2,7 @@ from django import template
 
 from fitapp import utils
 
-
-register= template.Library()
+register = template.Library()
 
 
 @register.filter

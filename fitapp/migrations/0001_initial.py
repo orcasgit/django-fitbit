@@ -1,21 +1,25 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import models, migrations
 from django.conf import settings
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
 
+    UserModel = getattr(settings, 'FITAPP_USER_MODEL', 'auth.User')
+
     dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        migrations.swappable_dependency(UserModel),
     ]
 
     operations = [
         migrations.CreateModel(
             name='TimeSeriesData',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('id',
+                 models.AutoField(verbose_name='ID', serialize=False, auto_created=True,
+                                  primary_key=True)),
                 ('date', models.DateField()),
                 ('value', models.CharField(default=None, max_length=32, null=True)),
             ],
@@ -26,9 +30,14 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='TimeSeriesDataType',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('category', models.IntegerField(choices=[(0, b'foods'), (1, b'activities'), (2, b'sleep'), (3, b'body')])),
+                ('id',
+                 models.AutoField(verbose_name='ID', serialize=False, auto_created=True,
+                                  primary_key=True)),
+                ('category', models.IntegerField(
+                    choices=[(0, b'foods'), (1, b'activities'), (2, b'sleep'),
+                             (3, b'body')])),
                 ('resource', models.CharField(max_length=128)),
+                ('intraday_support', models.BooleanField(default=False)),
             ],
             options={
                 'ordering': ['category', 'resource'],
@@ -38,11 +47,14 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='UserFitbit',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('id',
+                 models.AutoField(verbose_name='ID', serialize=False, auto_created=True,
+                                  primary_key=True)),
                 ('fitbit_user', models.CharField(unique=True, max_length=32)),
                 ('auth_token', models.TextField()),
                 ('auth_secret', models.TextField()),
-                ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL)),
+                ('user', models.OneToOneField(to=UserModel,
+                                              on_delete=models.CASCADE)),
             ],
             options={
             },
@@ -55,13 +67,15 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='timeseriesdata',
             name='resource_type',
-            field=models.ForeignKey(to='fitapp.TimeSeriesDataType'),
+            field=models.ForeignKey(to='fitapp.TimeSeriesDataType',
+                                    on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='timeseriesdata',
             name='user',
-            field=models.ForeignKey(to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(to=UserModel,
+                                    on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AlterUniqueTogether(

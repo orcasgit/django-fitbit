@@ -1,7 +1,9 @@
-from mock import MagicMock, Mock, patch
-import django
 import random
 import time
+
+import django
+from mock import MagicMock, Mock, patch
+
 try:
     from urllib.parse import urlencode
     from string import ascii_letters
@@ -11,7 +13,7 @@ except:
     from string import letters as ascii_letters
 
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.test import TestCase
 
 from fitbit.api import Fitbit

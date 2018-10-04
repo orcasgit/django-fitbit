@@ -41,3 +41,8 @@ FITAPP_ERROR_TEMPLATE = 'fitapp/error.html'
 # called with the request as the only parameter to get the final value for the
 # message.
 FITAPP_DECORATOR_MESSAGE = 'This page requires Fitbit integration.'
+
+# By default, don't try to get intraday time series data. See
+# https://dev.fitbit.com/docs/activity/#get-activity-intraday-time-series for
+# more info.
+FITAPP_GET_INTRADAY = False

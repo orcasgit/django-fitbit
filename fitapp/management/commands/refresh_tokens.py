@@ -13,7 +13,7 @@ invalid refresh token (an unrecoverable state).
 
 import time
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 
 from fitapp.models import UserFitbit

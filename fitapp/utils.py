@@ -1,10 +1,9 @@
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-
 from fitbit import Fitbit
 
 from . import defaults
-from .models import UserFitbit, TimeSeriesDataType
+from .models import TimeSeriesDataType, UserFitbit
 
 
 def create_fitbit(consumer_key=None, consumer_secret=None, **kwargs):
@@ -35,7 +34,7 @@ def is_integrated(user):
 
     :param user: A Django User.
     """
-    if user.is_authenticated() and user.is_active:
+    if user.is_authenticated and user.is_active:
         return UserFitbit.objects.filter(user=user).exists()
     return False
 
@@ -46,7 +45,7 @@ def get_valid_periods():
 
 
 def get_fitbit_data(fbuser, resource_type, base_date=None, period=None,
-                    end_date=None):
+                    end_date=None, start_time=None, end_time=None):
     """Creates a Fitbit API instance and retrieves step data for the period.
 
     Several exceptions may be thrown:
@@ -64,10 +63,16 @@ def get_fitbit_data(fbuser, resource_type, base_date=None, period=None,
     """
     fb = create_fitbit(**fbuser.get_user_data())
     resource_path = resource_type.path()
-    data = fb.time_series(resource_path, user_id=fbuser.fitbit_user,
-                          period=period, base_date=base_date,
-                          end_date=end_date)
-    return data[resource_path.replace('/', '-')]
+
+    if get_setting('FITAPP_GET_INTRADAY') and resource_type.intraday_support:
+        base_date = base_date[:10]
+        data = fb.intraday_time_series(resource_path, base_date=base_date,
+                                       start_time=start_time, end_time=end_time)
+    else:
+        data = fb.time_series(resource_path, user_id=fbuser.fitbit_user,
+                              period=period, base_date=base_date,
+                              end_date=end_date)
+    return data
 
 
 def get_setting(name, use_defaults=True):

@@ -1,16 +1,15 @@
 import json
-import requests_mock
 import time
-
 from collections import OrderedDict
 from datetime import datetime
 
+import requests_mock
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import AnonymousUser
-from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from django.test.utils import override_settings
+from django.urls import reverse
 from fitbit.exceptions import HTTPConflict
 from freezegun import freeze_time
 from mock import patch
@@ -18,9 +17,8 @@ from requests.auth import _basic_auth_str
 
 from fitapp import utils
 from fitapp.decorators import fitbit_integration_warning
-from fitapp.models import UserFitbit, TimeSeriesDataType
+from fitapp.models import TimeSeriesDataType, UserFitbit
 from fitapp.tasks import subscribe, unsubscribe
-
 from .base import FitappTestBase
 
 
@@ -468,14 +466,14 @@ class TestSubscription(FitappTestBase):
     @patch('fitbit.Fitbit.subscription')
     def test_subscribe(self, subscription):
         subscribe.apply_async((self.fbuser.fitbit_user, 1,))
-        subscription.assert_called_once_with(self.user.id, 1,)
+        subscription.assert_called_once_with(self.user.id, 1, )
 
     @patch('fitbit.Fitbit.subscription')
     def test_subscribe_error(self, subscription):
         subscription.side_effect = HTTPConflict
         apply_result = subscribe.apply_async((self.fbuser.fitbit_user, 1,))
         self.assertEqual(apply_result.status, 'REJECTED')
-        subscription.assert_called_once_with(self.user.id, 1,)
+        subscription.assert_called_once_with(self.user.id, 1, )
 
     @patch('fitbit.Fitbit.subscription')
     @patch('fitbit.Fitbit.list_subscriptions')

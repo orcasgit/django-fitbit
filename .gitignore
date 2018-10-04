@@ -7,3 +7,6 @@ docs/_build/
 .coverage
 htmlcov/
 *~
+.idea
+
+django_fitapp

@@ -1,5 +1,6 @@
 import sys
 
+from django.conf import settings
 
 DATABASES = {
     'default': {
@@ -21,6 +22,8 @@ FITAPP_CONSUMER_KEY = 'FAKE_CONSUMER_KEY'
 FITAPP_CONSUMER_SECRET = 'FAKE_CONSUMER_KEY'
 FITAPP_SUBSCRIBE = True
 FITAPP_SUBSCRIBER_ID = 1
+FITAPP_GET_INTRADAY = True
+FITAPP_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
 
 LOGGING = {
     'version': 1,
@@ -44,7 +47,7 @@ TEMPLATES = [
     },
 ]
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
 )
