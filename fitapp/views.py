@@ -89,10 +89,6 @@ def complete(request):
     except KeyError:
         return redirect(reverse('fitbit-error'))
 
-    if UserFitbit.objects.filter(fitbit_user=fitbit_user).exists():
-        current_fbuser = UserFitbit.objects.filter(fitbit_user=fitbit_user).first()
-        return redirect(reverse('fitbit-error'))
-
     fbuser, _ = UserFitbit.objects.update_or_create(user=user, defaults={
         'fitbit_user': fitbit_user,
         'access_token': access_token,
