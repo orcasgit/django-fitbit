@@ -35,7 +35,7 @@ def is_integrated(user):
 
     :param user: A Django User.
     """
-    if user.is_authenticated() and user.is_active:
+    if user.is_authenticated and user.is_active:
         return UserFitbit.objects.filter(user=user).exists()
     return False
 
