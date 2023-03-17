@@ -20,12 +20,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='timeseriesdata',
             name='resource_type',
-            field=models.ForeignKey(help_text=b'The type of time series data', to='fitapp.TimeSeriesDataType'),
+            field=models.ForeignKey(help_text=b'The type of time series data', to='fitapp.TimeSeriesDataType', on_delete=models.CASCADE),
         ),
         migrations.AlterField(
             model_name='timeseriesdata',
             name='user',
-            field=models.ForeignKey(help_text=b"The data's user", to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(help_text=b"The data's user", to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE),
         ),
         migrations.AlterField(
             model_name='timeseriesdata',
@@ -65,6 +65,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='userfitbit',
             name='user',
-            field=models.OneToOneField(to=settings.AUTH_USER_MODEL, help_text=b'The user'),
+            field=models.OneToOneField(to=settings.AUTH_USER_MODEL, help_text=b'The user', on_delete=models.CASCADE),
         ),
     ]

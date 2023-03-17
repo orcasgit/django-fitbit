@@ -6,7 +6,10 @@ from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.dispatch import receiver
 from django.http import HttpResponse, HttpResponseServerError, Http404
 from django.shortcuts import redirect, render
@@ -147,7 +150,7 @@ def complete(request):
 def create_fitbit_session(sender, request, user, **kwargs):
     """ If the user is a fitbit user, update the profile in the session. """
 
-    if user.is_authenticated() and utils.is_integrated(user) and \
+    if user.is_authenticated and utils.is_integrated(user) and \
             user.is_active:
         fbuser = UserFitbit.objects.filter(user=user)
         if fbuser.exists():
@@ -271,7 +274,7 @@ def update(request):
                     # the server
                     get_time_series_data.apply_async(
                         (update['ownerId'], _type.category, _type.resource,),
-                        {'date': parser.parse(update['date'])},
+                        {'date': update['date']},
                         countdown=(btw_delay * i))
         except (KeyError, ValueError, OverflowError):
             raise Http404
@@ -421,7 +424,7 @@ def get_data(request, category, resource):
         return make_response(104)
 
     fitapp_subscribe = utils.get_setting('FITAPP_SUBSCRIBE')
-    if not user.is_authenticated() or not user.is_active:
+    if not user.is_authenticated or not user.is_active:
         return make_response(101)
     if not fitapp_subscribe and not utils.is_integrated(user):
         return make_response(102)

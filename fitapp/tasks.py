@@ -1,5 +1,6 @@
 import logging
 import random
+import six
 
 from celery import shared_task
 from celery.exceptions import Ignore, Reject
@@ -59,7 +60,12 @@ def get_time_series_data(self, fitbit_user, cat, resource, date=None):
         raise Reject(e, requeue=False)
 
     # Create a lock so we don't try to run the same task multiple times
-    sdat = date.strftime('%Y-%m-%d') if date else 'ALL'
+    if date:
+        if isinstance(date, six.string_types):
+            date = parser.parse(date)
+        sdat = date.strftime('%Y-%m-%d')
+    else:
+        sdat = 'ALL'
     lock_id = '{0}-lock-{1}-{2}-{3}'.format(__name__, fitbit_user, _type, sdat)
     if not cache.add(lock_id, 'true', LOCK_EXPIRE):
         logger.debug('Already retrieving %s data for date %s, user %s' % (
